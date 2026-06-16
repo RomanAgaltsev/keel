@@ -13,7 +13,7 @@ import (
 // Loader loads module manifest and template file trees by module name.
 type Loader interface {
 	Load(name string) (manifest.Manifest, error)
-	Modulenames() ([]string, error)
+	ModuleNames() ([]string, error)
 	// FS returns the filesystem rooted at a module's template dir.
 	TemplateFS(name string) (fs.FS, error)
 }
