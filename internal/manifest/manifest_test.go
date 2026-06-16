@@ -1,8 +1,9 @@
-package module
+package manifest_test
 
 import (
 	"testing"
 
+	"github.com/RomanAgaltsev/keel/internal/manifest"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -24,7 +25,7 @@ files:
     dest: "."
     when: "{{ .enable_codeql }}"
 `)
-	var m Manifest
+	var m manifest.Manifest
 	require.NoError(t, yaml.Unmarshal(src, &m))
 
 	require.Equal(t, "ci-discipline", m.Name)

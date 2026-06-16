@@ -1,0 +1,3 @@
+name: go-service
+language: go
+modules: [base-layout, go-mod]

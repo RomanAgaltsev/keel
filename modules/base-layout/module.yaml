@@ -1,0 +1,7 @@
+name: base-layout
+description: README and .gitignore common to every repo
+version: 1.0.0
+language: any
+files:
+  - src: "*"
+    dest: "."

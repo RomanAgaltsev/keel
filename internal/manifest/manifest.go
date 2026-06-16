@@ -1,5 +1,5 @@
-// Package module defines keel's template-module and loading.
-package module
+// Package manifest defines keel's template-module and loading.
+package manifest
 
 // Manifest describes a single template module (module.yaml).
 type Manifest struct {
