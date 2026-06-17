@@ -3,9 +3,10 @@ package manifest_test
 import (
 	"testing"
 
-	"github.com/RomanAgaltsev/keel/internal/manifest"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/RomanAgaltsev/keel/internal/manifest"
 )
 
 func TestParseManifest(t *testing.T) {
