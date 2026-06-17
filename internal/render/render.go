@@ -28,31 +28,40 @@ func renderModule(m manifest.Manifest, tfs fs.FS, a answers.Answers) (map[string
 			return nil, fmt.Errorf("module %q: glob %q: %w", m.Name, rule.Src, err)
 		}
 		for _, src := range matches {
-			info, err := fs.Stat(tfs, src)
-			if err != nil {
+			if err := renderFile(out, m, tfs, a, rule.Dest, src); err != nil {
 				return nil, err
 			}
-			if info.IsDir() {
-				continue
-			}
-			rel, err := renderString(strings.TrimSuffix(src, ".tmpl"), a)
-			if err != nil {
-				return nil, fmt.Errorf("module %q: path %q: %w", m.Name, src, err)
-			}
-			dest := path.Join(rule.Dest, rel)
-
-			raw, err := fs.ReadFile(tfs, src)
-			if err != nil {
-				return nil, err
-			}
-			content, err := renderString(string(raw), a)
-			if err != nil {
-				return nil, fmt.Errorf("module %q: render %q: %w", m.Name, src, err)
-			}
-			out[dest] = content
 		}
 	}
 	return out, nil
+}
+
+// renderFile renders a single source file into out under dest. Directories are
+// skipped.
+func renderFile(out map[string]string, m manifest.Manifest, tfs fs.FS, a answers.Answers, destDir, src string) error {
+	info, err := fs.Stat(tfs, src)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return nil
+	}
+	rel, err := renderString(strings.TrimSuffix(src, ".tmpl"), a)
+	if err != nil {
+		return fmt.Errorf("module %q: path %q: %w", m.Name, src, err)
+	}
+	dest := path.Join(destDir, rel)
+
+	raw, err := fs.ReadFile(tfs, src)
+	if err != nil {
+		return err
+	}
+	content, err := renderString(string(raw), a)
+	if err != nil {
+		return fmt.Errorf("module %q: render %q: %w", m.Name, src, err)
+	}
+	out[dest] = content
+	return nil
 }
 
 func renderString(tmpl string, a answers.Answers) (string, error) {

@@ -47,6 +47,7 @@ func newListCmd() *cobra.Command {
 		},
 	}
 }
+
 func listRecipes() ([]recipe.Recipe, error) {
 	entries, err := fs.ReadDir(keel.BuiltinFS, "recipes")
 	if err != nil {

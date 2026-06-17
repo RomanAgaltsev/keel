@@ -111,7 +111,10 @@ linters:
             - $all
           allow:
             - $gostd
-            - "github.com/RomanAgaltsev/chaotic"
+            - "github.com/RomanAgaltsev/keel"
+            - "github.com/spf13/cobra"
+            - "github.com/stretchr/testify"
+            - "gopkg.in/yaml.v3"
 
     revive:
       severity: warning
@@ -148,5 +151,5 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(workerpool)
+        - prefix(github.com/RomanAgaltsev/keel)
       no-inline-comments: false
