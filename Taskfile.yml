@@ -7,9 +7,10 @@ vars:
   GOFUMPT_VERSION: "v0.10.0"
 
   BIN_DIR: '{{.ROOT_DIR | replace "\\" "/"}}/bin'
-  GOLANGCI_LINT: "{{.BIN_DIR}}/golangci-lint.exe"
-  GCI: "{{.BIN_DIR}}/gci.exe"
-  GOFUMPT: "{{.BIN_DIR}}/gofumpt.exe"
+  EXE_EXT: '{{if eq OS "windows"}}.exe{{end}}'
+  GOLANGCI_LINT: "{{.BIN_DIR}}/golangci-lint{{.EXE_EXT}}"
+  GCI: "{{.BIN_DIR}}/gci{{.EXE_EXT}}"
+  GOFUMPT: "{{.BIN_DIR}}/gofumpt{{.EXE_EXT}}"
 
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
@@ -77,7 +78,7 @@ tasks:
   build:
     desc: build keel into ./bin
     cmds:
-      - go build -ldflags '{{.LDFLAGS}}' -o {{.BIN_DIR}}/keel.exe ./cmd/keel
+      - go build -ldflags '{{.LDFLAGS}}' -o {{.BIN_DIR}}/keel{{.EXE_EXT}} ./cmd/keel
 
   vet:
     desc: go vet ./...
