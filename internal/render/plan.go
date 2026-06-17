@@ -7,6 +7,7 @@ import (
 
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/manifest"
+	"github.com/RomanAgaltsev/keel/internal/module"
 )
 
 // moduleFS pairs a resolved manifest with its template filesystem.
@@ -47,4 +48,21 @@ func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
 		}
 	}
 	return p, nil
+}
+
+// BuildRecipe resolves module names through the loader and builds the plan.
+func BuildRecipe(l module.Loader, names []string, a answers.Answers) (Plan, error) {
+	manifests, err := module.Resolve(l, names)
+	if err != nil {
+		return Plan{}, err
+	}
+	mods := make([]moduleFS, len(manifests))
+	for i, m := range manifests {
+		tfs, err := l.TemplateFS(m.Name)
+		if err != nil {
+			return Plan{}, err
+		}
+		mods[i] = moduleFS{Manifest: m, FS: tfs}
+	}
+	return BuildPlan(mods, a)
 }
