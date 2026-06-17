@@ -1,0 +1,8 @@
+name: go-mod
+description: Minimal Go module and entrypoint
+version: 1.0.0
+language: go
+requires: [base-layout]
+files:
+  - src: "*"
+    dest: "."
