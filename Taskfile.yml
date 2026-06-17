@@ -77,7 +77,7 @@ tasks:
   build:
     desc: build keel into ./bin
     cmds:
-      - go build -ldflags '{{.LDFLAGS}}' -o {{.BIN}}/keel ./cmd/keel
+      - go build -ldflags '{{.LDFLAGS}}' -o {{.BIN_DIR}}/keel.exe ./cmd/keel
 
   vet:
     desc: go vet ./...
