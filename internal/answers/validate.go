@@ -1,6 +1,7 @@
 package answers
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -14,7 +15,7 @@ var (
 // ValidateRepoName checks a repository name (no spaces or slashes).
 func ValidateRepoName(s string) error {
 	if s == "" {
-		return fmt.Errorf("repo name is required")
+		return errors.New("repo name is required")
 	}
 	if !reRepoName.MatchString(s) {
 		return fmt.Errorf("repo name %q may contain only letters, digits, '.', '_', '-'", s)
