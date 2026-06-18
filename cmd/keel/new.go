@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -74,10 +76,20 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 		target = str(ans, "repo_name")
 	}
 
-	// Provider selection (Phase 2: only the "none" path; Phase 3 adds github).
-	var p provider.Provider
+	// Provider selection.
 	createRemote, _ := ans["create_remote"].(bool)
-	// remoteURL alone is enough to drive clone-then-overlay without a provider.
+	providerName := str(ans, "provider")
+	var p provider.Provider
+	if createRemote && f.remoteURL == "" {
+		var err error
+		p, err = provider.For(providerName, provider.Env{
+			Token: firstEnv("KEEL_GITHUB_TOKEN", "GITHUB_TOKEN"),
+			Owner: ownerOrEnv(str(ans, "module_path")),
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	res, err := scaffold.Run(cmd.Context(), scaffold.Options{
 		Target: target, Recipe: rec.Name, ModuleNames: rec.Modules, Loader: l,
@@ -122,3 +134,31 @@ func printResult(out io.Writer, target string, res scaffold.Result) {
 }
 
 func str(a answers.Answers, k string) string { s, _ := a[k].(string); return s }
+
+func firstEnv(keys ...string) string {
+	for _, k := range keys {
+		if v := os.Getenv(k); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// ownerFromModulePath extracts the owner from a module path like
+// "github.com/Owner/repo" → "Owner". Empty if it can't be determined.
+func ownerFromModulePath(mp string) string {
+	parts := strings.Split(mp, "/")
+	if len(parts) >= 3 {
+		return parts[1]
+	}
+	return ""
+}
+
+// ownerOrEnv prefers an explicit $KEEL_GITHUB_OWNER, else derives the owner
+// from the module path.
+func ownerOrEnv(modulePath string) string {
+	if v := firstEnv("KEEL_GITHUB_OWNER"); v != "" {
+		return v
+	}
+	return ownerFromModulePath(modulePath)
+}
