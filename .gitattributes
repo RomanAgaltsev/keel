@@ -1,1 +1,9 @@
+# Normalize line endings to LF for all text so embedded templates render
+# identically on every platform (the golden tests compare byte-for-byte).
+* text=auto eol=lf
+
 *.go text eol=lf
+*.tmpl text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf

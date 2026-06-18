@@ -1,0 +1,10 @@
+repo_name: demo
+description: a demo service
+module_path: github.com/RomanAgaltsev/demo
+author_name: Roman Agaltsev
+author_email: roman-agalcev@yandex.ru
+license: MIT
+visibility: public
+provider: github
+create_remote: true
+enable_codeql: true
