@@ -66,3 +66,17 @@ func (l *FSLoader) TemplateFS(name string) (fs.FS, error) {
 	}
 	return sub, nil
 }
+
+// RecipeQuestions returns the concatenated questions of the named modules
+// (resolved, dependencies first), in resolved order.
+func RecipeQuestions(l Loader, names []string) ([]manifest.Question, error) {
+	manifests, err := Resolve(l, names)
+	if err != nil {
+		return nil, err
+	}
+	var out []manifest.Question
+	for _, m := range manifests {
+		out = append(out, m.Questions...)
+	}
+	return out, nil
+}
