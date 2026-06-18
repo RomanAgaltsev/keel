@@ -64,151 +64,196 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		Description: str(opts.Answers, "description"),
 		Private:     str(opts.Answers, "visibility") == "private",
 	}
-	var remote provider.RemoteRepo
-	if opts.RemoteURL != "" {
-		res.State.RemotePresent = true
-		remote = provider.RemoteRepo{CloneURL: opts.RemoteURL}
-	} else if opts.CreateRemote && opts.Provider != nil {
-		exists, r, err := opts.Provider.RepoExists(ctx, spec)
-		if err != nil {
-			return res, fmt.Errorf("check remote: %w", err)
-		}
-		res.State.RemotePresent = exists
-		remote = r
-	}
-
-	targetExists, err := pathExists(opts.Target)
+	remotePresent, remote, err := detectRemote(ctx, opts, spec)
 	if err != nil {
 		return res, err
 	}
+	res.State.RemotePresent = remotePresent
 
 	// 2b. Dry-run: report what would be written/skipped, then stop (no disk/network).
 	if opts.DryRun {
-		res.DryRun = true
-		for dest := range plan.Files {
-			full := filepath.Join(opts.Target, filepath.FromSlash(dest))
-			if _, statErr := os.Stat(full); statErr == nil && !opts.Overwrite {
-				res.Skipped = append(res.Skipped, dest)
-			} else {
-				res.Written = append(res.Written, dest)
-			}
-		}
-		sort.Strings(res.Written)
-		sort.Strings(res.Skipped)
-		return res, nil
+		return dryRunResult(plan, opts, res)
 	}
 
 	// 3. Materialize the working tree.
+	res.Written, res.Skipped, err = materialize(ctx, opts, plan, res.State, remote)
+	if err != nil {
+		return res, err
+	}
+
+	// 4-6. git init + identity, write lock, stage + commit.
 	repo := git.New(opts.Target)
+	committed, err := commitStep(ctx, repo, opts)
+	if err != nil {
+		return res, err
+	}
+	res.Committed = committed
+
+	// 7. Remote step.
+	if err := remoteStep(ctx, repo, opts, spec, remote, &res); err != nil {
+		return res, err
+	}
+	return res, nil
+}
+
+// detectRemote resolves whether a remote already exists and how to reach it.
+func detectRemote(ctx context.Context, opts Options, spec provider.RepoSpec) (bool, provider.RemoteRepo, error) {
+	if opts.RemoteURL != "" {
+		return true, provider.RemoteRepo{CloneURL: opts.RemoteURL}, nil
+	}
+	if opts.CreateRemote && opts.Provider != nil {
+		exists, r, err := opts.Provider.RepoExists(ctx, spec)
+		if err != nil {
+			return false, provider.RemoteRepo{}, fmt.Errorf("check remote: %w", err)
+		}
+		return exists, r, nil
+	}
+	return false, provider.RemoteRepo{}, nil
+}
+
+// dryRunResult reports what would be written/skipped without touching disk or network.
+func dryRunResult(plan render.Plan, opts Options, res Result) (Result, error) {
+	res.DryRun = true
+	for dest := range plan.Files {
+		full := filepath.Join(opts.Target, filepath.FromSlash(dest))
+		if _, statErr := os.Stat(full); statErr == nil && !opts.Overwrite {
+			res.Skipped = append(res.Skipped, dest)
+		} else {
+			res.Written = append(res.Written, dest)
+		}
+	}
+	sort.Strings(res.Written)
+	sort.Strings(res.Skipped)
+	return res, nil
+}
+
+// materialize writes the plan into the working tree, branching on repo-state.
+func materialize(ctx context.Context, opts Options, plan render.Plan, state State, remote provider.RemoteRepo) (written, skipped []string, err error) {
+	targetExists, err := pathExists(opts.Target)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	switch {
-	case !res.State.LocalPresent && res.State.RemotePresent:
+	case !state.LocalPresent && state.RemotePresent:
 		// clone-then-overlay
-		if _, err := git.Clone(remote.CloneURL, opts.Target); err != nil {
-			return res, err
+		if _, err := git.Clone(ctx, remote.CloneURL, opts.Target); err != nil {
+			return nil, nil, err
 		}
 		w, err := render.OverlayPlan(plan, opts.Target, opts.Overwrite)
 		if err != nil {
-			return res, err
+			return nil, nil, err
 		}
-		res.Written, res.Skipped = w.Written, w.Skipped
-	case res.State.LocalPresent:
+		return w.Written, w.Skipped, nil
+	case state.LocalPresent:
 		// overlay into existing dir
 		w, err := render.OverlayPlan(plan, opts.Target, opts.Overwrite)
 		if err != nil {
-			return res, err
+			return nil, nil, err
 		}
-		res.Written, res.Skipped = w.Written, w.Skipped
+		return w.Written, w.Skipped, nil
+	case targetExists:
+		// local absent, remote absent, but an existing (empty) dir takes the overlay
+		// path (WritePlan refuses any existing target, even an empty one).
+		w, err := render.OverlayPlan(plan, opts.Target, opts.Overwrite)
+		if err != nil {
+			return nil, nil, err
+		}
+		return w.Written, w.Skipped, nil
 	default:
-		// local absent, remote absent. A non-existent target takes the fresh
-		// atomic write; an existing *empty* dir takes the overlay path (WritePlan
-		// refuses any existing target, even an empty one).
-		if targetExists {
-			w, err := render.OverlayPlan(plan, opts.Target, opts.Overwrite)
-			if err != nil {
-				return res, err
-			}
-			res.Written, res.Skipped = w.Written, w.Skipped
-		} else {
-			if err := render.WritePlan(plan, opts.Target); err != nil {
-				return res, err
-			}
-			res.Written = keysSorted(plan.Files)
+		// non-existent target takes the fresh atomic write.
+		if err := render.WritePlan(plan, opts.Target); err != nil {
+			return nil, nil, err
 		}
+		return keysSorted(plan.Files), nil, nil
 	}
+}
 
-	// 4. git init (if needed) + identity.
+// commitStep initializes the repo, sets identity, writes the lock and commits.
+// It reports whether a commit was actually created (an idempotent re-run with no
+// staged changes produces no commit). The lock is written *before* committing so
+// it lands in the same commit (and re-runs with identical answers produce no diff).
+func commitStep(ctx context.Context, repo *git.Repo, opts Options) (bool, error) {
 	if !repo.IsRepo() {
-		if err := repo.Init("main"); err != nil {
-			return res, err
+		if err := repo.Init(ctx, "main"); err != nil {
+			return false, err
 		}
 	}
-	if err := repo.SetIdentity(str(opts.Answers, "author_name"), str(opts.Answers, "author_email")); err != nil {
-		return res, err
+	if err := repo.SetIdentity(ctx, str(opts.Answers, "author_name"), str(opts.Answers, "author_email")); err != nil {
+		return false, err
+	}
+	if err := writeLock(opts); err != nil {
+		return false, err
 	}
 
-	// 5. Write .scaffold.lock *before* committing so it lands in the same commit
-	// (and re-runs with identical answers produce no diff → no empty commit).
+	// Stage + commit. Skip an empty commit on idempotent re-runs / all-skipped
+	// overlays — nothing staged means nothing to commit.
+	if err := repo.AddAll(ctx); err != nil {
+		return false, err
+	}
+	changed, err := repo.HasChanges(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !changed {
+		return false, nil
+	}
+	if err := repo.Commit(ctx, "chore: scaffold with keel"); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// writeLock writes .scaffold.lock recording what produced the repo.
+func writeLock(opts Options) error {
 	manifests, err := module.Resolve(opts.Loader, opts.ModuleNames)
 	if err != nil {
-		return res, err
+		return err
 	}
 	lmods := make([]lock.Module, len(manifests))
 	for i, m := range manifests {
 		lmods[i] = lock.Module{Name: m.Name, Source: "builtin", Version: m.Version}
 	}
-	if err := lock.Write(filepath.Join(opts.Target, ".scaffold.lock"), lock.Lock{
+	return lock.Write(filepath.Join(opts.Target, ".scaffold.lock"), lock.Lock{
 		KeelVersion: opts.KeelVersion, Recipe: opts.Recipe, Modules: lmods, Answers: opts.Answers,
-	}); err != nil {
-		return res, err
-	}
+	})
+}
 
-	// 6. Stage + commit. Skip an empty commit on idempotent re-runs / all-skipped
-	// overlays — nothing staged means nothing to commit.
-	if err := repo.AddAll(); err != nil {
-		return res, err
+// remoteStep creates and/or wires the remote and records follow-up steps.
+func remoteStep(ctx context.Context, repo *git.Repo, opts Options, spec provider.RepoSpec, remote provider.RemoteRepo, res *Result) error {
+	if !opts.CreateRemote || opts.Provider == nil {
+		return nil
 	}
-	changed, err := repo.HasChanges()
-	if err != nil {
-		return res, err
+	if !res.State.RemotePresent {
+		r, err := opts.Provider.CreateRepo(ctx, spec)
+		if err != nil {
+			return fmt.Errorf("create remote: %w", err)
+		}
+		remote, res.Created = r, true
 	}
-	if changed {
-		if err := repo.Commit("chore: scaffold with keel"); err != nil {
-			return res, err
-		}
-		res.Committed = true
-	}
-
-	// 7. Remote step.
-	if opts.CreateRemote && opts.Provider != nil {
-		if !res.State.RemotePresent {
-			r, err := opts.Provider.CreateRepo(ctx, spec)
-			if err != nil {
-				return res, fmt.Errorf("create remote: %w", err)
-			}
-			remote, res.Created = r, true
-		}
-		if remote.CloneURL != "" {
-			if err := repo.AddRemote("origin", remote.CloneURL); err != nil {
-				return res, err
-			}
-		}
-		if res.State.LocalPresent && res.State.RemotePresent {
-			// both-exist: never force-push; hand reconciliation to the user.
-			res.NextSteps = []string{
-				"git fetch origin",
-				"git rebase origin/main   # or merge, resolve any conflicts",
-				"git push -u origin main",
-			}
-		} else if remote.CloneURL != "" {
-			if err := repo.Push("origin", "main"); err != nil {
-				// Push failures are reported, not fatal to local work.
-				res.NextSteps = []string{fmt.Sprintf("git push failed; run: git -C %s push -u origin main", opts.Target)}
-			} else {
-				res.Pushed = true
-			}
+	if remote.CloneURL != "" {
+		if err := repo.AddRemote(ctx, "origin", remote.CloneURL); err != nil {
+			return err
 		}
 	}
-	return res, nil
+	if res.State.LocalPresent && res.State.RemotePresent {
+		// both-exist: never force-push; hand reconciliation to the user.
+		res.NextSteps = []string{
+			"git fetch origin",
+			"git rebase origin/main   # or merge, resolve any conflicts",
+			"git push -u origin main",
+		}
+		return nil
+	}
+	if remote.CloneURL != "" {
+		if err := repo.Push(ctx, "origin", "main"); err != nil {
+			// Push failures are reported, not fatal to local work.
+			res.NextSteps = []string{fmt.Sprintf("git push failed; run: git -C %s push -u origin main", opts.Target)}
+		} else {
+			res.Pushed = true
+		}
+	}
+	return nil
 }
 
 func str(a answers.Answers, k string) string {

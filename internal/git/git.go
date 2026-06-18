@@ -2,6 +2,7 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,9 +26,9 @@ func (r *Repo) Dir() string {
 }
 
 // Run executes `git -C <dir> args...` and returns combined output.
-func (r *Repo) Run(args ...string) (string, error) {
+func (r *Repo) Run(ctx context.Context, args ...string) (string, error) {
 	full := append([]string{"-C", r.dir}, args...)
-	out, err := exec.Command("git", full...).CombinedOutput()
+	out, err := exec.CommandContext(ctx, "git", full...).CombinedOutput()
 	if err != nil {
 		return string(out), fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 	}
@@ -41,33 +42,33 @@ func (r *Repo) IsRepo() bool {
 }
 
 // Init initializes a repo with the given initial branch.
-func (r *Repo) Init(branch string) error {
+func (r *Repo) Init(ctx context.Context, branch string) error {
 	if err := os.MkdirAll(r.dir, 0o750); err != nil {
 		return err
 	}
-	_, err := r.Run("init", "-b", branch)
+	_, err := r.Run(ctx, "init", "-b", branch)
 	return err
 }
 
 // SetIdentity sets the repo-local user.name/user.email (per-repo identity convention).
-func (r *Repo) SetIdentity(name, email string) error {
-	if _, err := r.Run("config", "user.name", name); err != nil {
+func (r *Repo) SetIdentity(ctx context.Context, name, email string) error {
+	if _, err := r.Run(ctx, "config", "user.name", name); err != nil {
 		return err
 	}
-	_, err := r.Run("config", "user.email", email)
+	_, err := r.Run(ctx, "config", "user.email", email)
 	return err
 }
 
 // AddAll stages all changes.
-func (r *Repo) AddAll() error {
-	_, err := r.Run("add", "-A")
+func (r *Repo) AddAll(ctx context.Context) error {
+	_, err := r.Run(ctx, "add", "-A")
 	return err
 }
 
 // HasChanges reports whether the working tree has any staged or unstaged
 // changes (so the orchestrator can skip an empty commit on idempotent re-runs).
-func (r *Repo) HasChanges() (bool, error) {
-	out, err := r.Run("status", "--porcelain")
+func (r *Repo) HasChanges(ctx context.Context) (bool, error) {
+	out, err := r.Run(ctx, "status", "--porcelain")
 	if err != nil {
 		return false, err
 	}
@@ -75,30 +76,30 @@ func (r *Repo) HasChanges() (bool, error) {
 }
 
 // Commit creates a commit with msg (identity must already be set).
-func (r *Repo) Commit(msg string) error {
-	_, err := r.Run("commit", "-m", msg)
+func (r *Repo) Commit(ctx context.Context, msg string) error {
+	_, err := r.Run(ctx, "commit", "-m", msg)
 	return err
 }
 
 // AddRemote adds (or replaces) a named remote.
-func (r *Repo) AddRemote(name, url string) error {
-	if _, err := r.Run("remote", "add", name, url); err != nil {
+func (r *Repo) AddRemote(ctx context.Context, name, url string) error {
+	if _, err := r.Run(ctx, "remote", "add", name, url); err != nil {
 		// If it already exists, set the URL instead.
-		_, serr := r.Run("remote", "set-url", name, url)
+		_, serr := r.Run(ctx, "remote", "set-url", name, url)
 		return serr
 	}
 	return nil
 }
 
 // Push pushes branch to remote, setting upstream.
-func (r *Repo) Push(remote, branch string) error {
-	_, err := r.Run("push", "-u", remote, branch)
+func (r *Repo) Push(ctx context.Context, remote, branch string) error {
+	_, err := r.Run(ctx, "push", "-u", remote, branch)
 	return err
 }
 
 // Clone clones url into dir and returns a Repo for it.
-func Clone(url, dir string) (*Repo, error) {
-	if _, err := exec.Command("git", "clone", url, dir).CombinedOutput(); err != nil {
+func Clone(ctx context.Context, url, dir string) (*Repo, error) {
+	if _, err := exec.CommandContext(ctx, "git", "clone", url, dir).CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("git clone %q: %w", url, err)
 	}
 	return New(dir), nil

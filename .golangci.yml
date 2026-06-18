@@ -112,6 +112,7 @@ linters:
           allow:
             - $gostd
             - "github.com/RomanAgaltsev/keel"
+            - "github.com/charmbracelet/huh"
             - "github.com/spf13/cobra"
             - "github.com/stretchr/testify"
             - "gopkg.in/yaml.v3"

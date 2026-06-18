@@ -131,15 +131,16 @@ func emptyBare(t *testing.T) string {
 // remote), usable as a clone source.
 func localBare(t *testing.T) string {
 	t.Helper()
+	ctx := context.Background()
 	work := t.TempDir()
 	r := git.New(work)
-	require.NoError(t, r.Init("main"))
-	require.NoError(t, r.SetIdentity("Roman Agaltsev", "roman-agalcev@yandex.ru"))
+	require.NoError(t, r.Init(ctx, "main"))
+	require.NoError(t, r.SetIdentity(ctx, "Roman Agaltsev", "roman-agalcev@yandex.ru"))
 	require.NoError(t, os.WriteFile(filepath.Join(work, "seed.txt"), []byte("s"), 0o644))
-	require.NoError(t, r.AddAll())
-	require.NoError(t, r.Commit("seed"))
+	require.NoError(t, r.AddAll(ctx))
+	require.NoError(t, r.Commit(ctx, "seed"))
 	bare := filepath.Join(t.TempDir(), "origin.git")
-	_, err := r.Run("clone", "--bare", work, bare)
+	_, err := r.Run(ctx, "clone", "--bare", work, bare)
 	require.NoError(t, err)
 	return bare
 }

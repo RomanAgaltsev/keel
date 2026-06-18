@@ -1,6 +1,7 @@
 package git_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,49 +12,51 @@ import (
 )
 
 func TestInitCommitAndIsRepo(t *testing.T) {
+	ctx := context.Background()
 	dir := t.TempDir()
 	r := git.New(dir)
 	require.False(t, r.IsRepo())
 
-	require.NoError(t, r.Init("main"))
+	require.NoError(t, r.Init(ctx, "main"))
 	require.True(t, r.IsRepo())
-	require.NoError(t, r.SetIdentity("Roman Agaltsev", "roman-agalcev@yandex.ru"))
+	require.NoError(t, r.SetIdentity(ctx, "Roman Agaltsev", "roman-agalcev@yandex.ru"))
 
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.txt"), []byte("x"), 0o644))
-	require.NoError(t, r.AddAll())
-	require.NoError(t, r.Commit("initial commit"))
+	require.NoError(t, r.AddAll(ctx))
+	require.NoError(t, r.Commit(ctx, "initial commit"))
 
-	out, err := r.Run("log", "--oneline")
+	out, err := r.Run(ctx, "log", "--oneline")
 	require.NoError(t, err)
 	require.Contains(t, out, "initial commit")
 
 	// After committing, a clean tree reports no changes.
-	clean, err := r.HasChanges()
+	clean, err := r.HasChanges(ctx)
 	require.NoError(t, err)
 	require.False(t, clean)
 
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.txt"), []byte("z"), 0o644))
-	dirty, err := r.HasChanges()
+	dirty, err := r.HasChanges(ctx)
 	require.NoError(t, err)
 	require.True(t, dirty)
 }
 
 func TestCloneFromLocalBare(t *testing.T) {
+	ctx := context.Background()
 	// Build a source bare repo with one commit.
 	work := t.TempDir()
 	src := git.New(work)
-	require.NoError(t, src.Init("main"))
-	require.NoError(t, src.SetIdentity("Roman Agaltsev", "roman-agalcev@yandex.ru"))
+	require.NoError(t, src.Init(ctx, "main"))
+	require.NoError(t, src.SetIdentity(ctx, "Roman Agaltsev", "roman-agalcev@yandex.ru"))
 	require.NoError(t, os.WriteFile(filepath.Join(work, "f.txt"), []byte("hi"), 0o644))
-	require.NoError(t, src.AddAll())
-	require.NoError(t, src.Commit("seed"))
+	require.NoError(t, src.AddAll(ctx))
+	require.NoError(t, src.Commit(ctx, "seed"))
 
 	bare := filepath.Join(t.TempDir(), "origin.git")
-	_, err := git.New(work).Run("clone", "--bare", work, bare)
+	_, err := git.New(work).Run(ctx, "clone", "--bare", work, bare)
 	require.NoError(t, err)
 
 	dst := filepath.Join(t.TempDir(), "checkout")
-	r, err := git.Clone(bare, dst)
+	r, err := git.Clone(ctx, bare, dst)
 	require.NoError(t, err)
 	require.True(t, r.IsRepo())
 	_, err = os.Stat(filepath.Join(dst, "f.txt"))
