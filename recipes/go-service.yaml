@@ -1,3 +1,14 @@
 name: go-service
 language: go
-modules: [base-layout, go-mod]
+modules:
+  [
+    base-layout,
+    go-mod,
+    taskfile,
+    lint,
+    test,
+    security,
+    dep-bots,
+    release,
+    spell,
+  ]
