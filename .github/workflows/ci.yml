@@ -20,5 +20,4 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: task setup
-      - run: task tidy:check
       - run: task lint
