@@ -56,6 +56,13 @@ func BuildRecipe(l module.Loader, names []string, a answers.Answers) (Plan, erro
 	if err != nil {
 		return Plan{}, err
 	}
+	return BuildFromManifests(l, manifests, a)
+}
+
+// BuildFromManifests builds a plan from already-resolved manifests (dependency
+// order preserved), loading each module's template FS through l. Callers that have
+// already resolved the graph use this to avoid walking it twice.
+func BuildFromManifests(l module.Loader, manifests []manifest.Manifest, a answers.Answers) (Plan, error) {
 	mods := make([]moduleFS, len(manifests))
 	for i, m := range manifests {
 		tfs, err := l.TemplateFS(m.Name)

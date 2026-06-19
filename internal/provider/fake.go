@@ -10,7 +10,8 @@ type Fake struct {
 	ExistsErr error
 	CreateErr error
 
-	Created bool // set true once CreateRepo is called
+	Created      bool // set true once CreateRepo is called
+	ExistsCalled bool // set true once RepoExists is called (e.g. to assert no network on dry-run)
 }
 
 func (f *Fake) Name() string {
@@ -18,6 +19,7 @@ func (f *Fake) Name() string {
 }
 
 func (f *Fake) RepoExists(_ context.Context, _ RepoSpec) (bool, RemoteRepo, error) {
+	f.ExistsCalled = true
 	return f.Exists, f.Repo, f.ExistsErr
 }
 

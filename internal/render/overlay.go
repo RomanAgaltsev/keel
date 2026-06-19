@@ -31,10 +31,12 @@ func OverlayPlan(p Plan, target string, overwrite bool) (WriteResult, error) {
 		} else if err != nil && !os.IsNotExist(err) {
 			return WriteResult{}, err
 		}
-		if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		//nolint:gosec // scaffolded project dirs are intended to be world-readable
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			return WriteResult{}, err
 		}
-		if err := os.WriteFile(full, []byte(p.Files[dest]), 0o600); err != nil {
+		//nolint:gosec // scaffolded project files are intended to be world-readable
+		if err := os.WriteFile(full, []byte(p.Files[dest]), 0o644); err != nil {
 			return WriteResult{}, err
 		}
 		res.Written = append(res.Written, dest)

@@ -1,4 +1,4 @@
-// Package manifest defines keel's template-module and loading.
+// Package manifest defines keel's template-module manifest types.
 package manifest
 
 // Manifest describes a single template module (module.yaml).
@@ -22,7 +22,7 @@ type Question struct {
 	Required bool     `yaml:"required,omitempty"`
 }
 
-// FileRule maps a glob of template files to a destionation, optionally gated by When.
+// FileRule maps a glob of template files to a destination, optionally gated by When.
 type FileRule struct {
 	Src  string `yaml:"src"`
 	Dest string `yaml:"dest"`

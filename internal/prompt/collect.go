@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/manifest"
@@ -21,13 +22,14 @@ func (f AskerFunc) Ask(qs []manifest.Question, into answers.Answers) error {
 }
 
 // MergeQuestions concatenates core + module questions, deduping by ID.
-// A duplicate ID whoose definition differs from the first is an error.
+// A duplicate ID whose definition differs from the first (in any field —
+// type, prompt, options, default, or required) is an error.
 func MergeQuestions(core, mod []manifest.Question) ([]manifest.Question, error) {
 	seen := map[string]manifest.Question{}
 	out := make([]manifest.Question, 0, len(core)+len(mod))
 	for _, q := range append(append([]manifest.Question{}, core...), mod...) {
 		if prev, ok := seen[q.ID]; ok {
-			if prev.Type != q.Type || prev.Prompt != q.Prompt {
+			if !reflect.DeepEqual(prev, q) {
 				return nil, fmt.Errorf("question %q defined twice with conflicting definitions", q.ID)
 			}
 			continue

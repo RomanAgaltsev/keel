@@ -10,6 +10,7 @@ import (
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/git"
 	"github.com/RomanAgaltsev/keel/internal/lock"
+	"github.com/RomanAgaltsev/keel/internal/manifest"
 	"github.com/RomanAgaltsev/keel/internal/module"
 	"github.com/RomanAgaltsev/keel/internal/provider"
 	"github.com/RomanAgaltsev/keel/internal/render"
@@ -46,8 +47,14 @@ type Result struct {
 func Run(ctx context.Context, opts Options) (Result, error) {
 	var res Result
 
-	// 1. Build the render plan (cross-module collisions fail here).
-	plan, err := render.BuildRecipe(opts.Loader, opts.ModuleNames, opts.Answers)
+	// 1. Resolve the module graph once, then build the render plan from it
+	//    (cross-module collisions fail here). The resolved manifests are reused for
+	//    the lockfile, so the graph is walked only once per run.
+	manifests, err := module.Resolve(opts.Loader, opts.ModuleNames)
+	if err != nil {
+		return res, err
+	}
+	plan, err := render.BuildFromManifests(opts.Loader, manifests, opts.Answers)
 	if err != nil {
 		return res, err
 	}
@@ -60,20 +67,24 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	res.State.LocalPresent = lp
 
 	spec := provider.RepoSpec{
-		Name:        str(opts.Answers, "repo_name"),
-		Description: str(opts.Answers, "description"),
-		Private:     str(opts.Answers, "visibility") == "private",
+		Name:        opts.Answers.String("repo_name"),
+		Description: opts.Answers.String("description"),
+		Private:     opts.Answers.String("visibility") == "private",
 	}
+
+	// 2b. Dry-run: report what would be written/skipped, then stop. It must touch
+	// neither disk nor network, so remote presence is resolved only from inputs that
+	// require no network call (an explicit --remote-url); the provider is never asked.
+	if opts.DryRun {
+		res.State.RemotePresent = opts.RemoteURL != ""
+		return dryRunResult(plan, opts, res)
+	}
+
 	remotePresent, remote, err := detectRemote(ctx, opts, spec)
 	if err != nil {
 		return res, err
 	}
 	res.State.RemotePresent = remotePresent
-
-	// 2b. Dry-run: report what would be written/skipped, then stop (no disk/network).
-	if opts.DryRun {
-		return dryRunResult(plan, opts, res)
-	}
 
 	// 3. Materialize the working tree.
 	res.Written, res.Skipped, err = materialize(ctx, opts, plan, res.State, remote)
@@ -83,7 +94,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 
 	// 4-6. git init + identity, write lock, stage + commit.
 	repo := git.New(opts.Target)
-	committed, err := commitStep(ctx, repo, opts)
+	committed, err := commitStep(ctx, repo, opts, manifests)
 	if err != nil {
 		return res, err
 	}
@@ -124,6 +135,14 @@ func dryRunResult(plan render.Plan, opts Options, res Result) (Result, error) {
 	}
 	sort.Strings(res.Written)
 	sort.Strings(res.Skipped)
+
+	// Remote existence is not probed under --dry-run (no network). If a provider
+	// remote would have been created/reused, the real run may clone-then-overlay and
+	// skip files already present on the remote — so the counts above are an upper bound.
+	if opts.CreateRemote && opts.RemoteURL == "" {
+		res.NextSteps = append(res.NextSteps,
+			"remote existence not checked in --dry-run; clone-then-overlay may skip files already on the remote")
+	}
 	return res, nil
 }
 
@@ -136,8 +155,13 @@ func materialize(ctx context.Context, opts Options, plan render.Plan, state Stat
 
 	switch {
 	case !state.LocalPresent && state.RemotePresent:
-		// clone-then-overlay
+		// clone-then-overlay. Only clean up a target we created (an absent or empty
+		// dir), never one the user populated — keel never destroys existing work.
+		createdByUs := !targetExists
 		if _, err := git.Clone(ctx, remote.CloneURL, opts.Target); err != nil {
+			if createdByUs {
+				_ = os.RemoveAll(opts.Target) //nolint:gosec // best-effort cleanup of the partial clone
+			}
 			return nil, nil, err
 		}
 		w, err := render.OverlayPlan(plan, opts.Target, opts.Overwrite)
@@ -173,16 +197,16 @@ func materialize(ctx context.Context, opts Options, plan render.Plan, state Stat
 // It reports whether a commit was actually created (an idempotent re-run with no
 // staged changes produces no commit). The lock is written *before* committing so
 // it lands in the same commit (and re-runs with identical answers produce no diff).
-func commitStep(ctx context.Context, repo *git.Repo, opts Options) (bool, error) {
+func commitStep(ctx context.Context, repo *git.Repo, opts Options, manifests []manifest.Manifest) (bool, error) {
 	if !repo.IsRepo() {
 		if err := repo.Init(ctx, "main"); err != nil {
 			return false, err
 		}
 	}
-	if err := repo.SetIdentity(ctx, str(opts.Answers, "author_name"), str(opts.Answers, "author_email")); err != nil {
+	if err := repo.SetIdentity(ctx, opts.Answers.String("author_name"), opts.Answers.String("author_email")); err != nil {
 		return false, err
 	}
-	if err := writeLock(opts); err != nil {
+	if err := writeLock(opts, manifests); err != nil {
 		return false, err
 	}
 
@@ -204,12 +228,9 @@ func commitStep(ctx context.Context, repo *git.Repo, opts Options) (bool, error)
 	return true, nil
 }
 
-// writeLock writes .scaffold.lock recording what produced the repo.
-func writeLock(opts Options) error {
-	manifests, err := module.Resolve(opts.Loader, opts.ModuleNames)
-	if err != nil {
-		return err
-	}
+// writeLock writes .scaffold.lock recording what produced the repo, from the
+// already-resolved manifests (no second graph walk).
+func writeLock(opts Options, manifests []manifest.Manifest) error {
 	lmods := make([]lock.Module, len(manifests))
 	for i, m := range manifests {
 		lmods[i] = lock.Module{Name: m.Name, Source: "builtin", Version: m.Version}
@@ -221,20 +242,21 @@ func writeLock(opts Options) error {
 
 // remoteStep creates and/or wires the remote and records follow-up steps.
 func remoteStep(ctx context.Context, repo *git.Repo, opts Options, spec provider.RepoSpec, remote provider.RemoteRepo, res *Result) error {
-	if !opts.CreateRemote || opts.Provider == nil {
-		return nil
-	}
-	if !res.State.RemotePresent {
+	// Create a remote only when a provider is present and none exists yet. Wiring and
+	// pushing, by contrast, need only a remote URL (which --remote-url also supplies),
+	// so they are gated separately — not on the provider.
+	if opts.CreateRemote && opts.Provider != nil && !res.State.RemotePresent {
 		r, err := opts.Provider.CreateRepo(ctx, spec)
 		if err != nil {
 			return fmt.Errorf("create remote: %w", err)
 		}
 		remote, res.Created = r, true
 	}
-	if remote.CloneURL != "" {
-		if err := repo.AddRemote(ctx, "origin", remote.CloneURL); err != nil {
-			return err
-		}
+	if remote.CloneURL == "" {
+		return nil // no remote to wire (provider "none" and no --remote-url)
+	}
+	if err := repo.AddRemote(ctx, "origin", remote.CloneURL); err != nil {
+		return err
 	}
 	if res.State.LocalPresent && res.State.RemotePresent {
 		// both-exist: never force-push; hand reconciliation to the user.
@@ -245,20 +267,13 @@ func remoteStep(ctx context.Context, repo *git.Repo, opts Options, spec provider
 		}
 		return nil
 	}
-	if remote.CloneURL != "" {
-		if err := repo.Push(ctx, "origin", "main"); err != nil {
-			// Push failures are reported, not fatal to local work.
-			res.NextSteps = []string{fmt.Sprintf("git push failed; run: git -C %s push -u origin main", opts.Target)}
-		} else {
-			res.Pushed = true
-		}
+	if err := repo.Push(ctx, "origin", "main"); err != nil {
+		// Push failures are reported, not fatal to local work.
+		res.NextSteps = []string{fmt.Sprintf("git push failed; run: git -C %s push -u origin main", opts.Target)}
+	} else {
+		res.Pushed = true
 	}
 	return nil
-}
-
-func str(a answers.Answers, k string) string {
-	s, _ := a[k].(string)
-	return s
 }
 
 func keysSorted(m map[string]string) []string {
