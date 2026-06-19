@@ -17,7 +17,8 @@ func WritePlan(p Plan, target string) error {
 	}
 
 	parent := filepath.Dir(target)
-	if err := os.MkdirAll(parent, 0o750); err != nil {
+	//nolint:gosec // scaffolded project dirs are intended to be world-readable
+	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return err
 	}
 	tmp, err := os.MkdirTemp(parent, ".keel-tmp-*")
@@ -33,10 +34,12 @@ func WritePlan(p Plan, target string) error {
 	sort.Strings(dests)
 	for _, dest := range dests {
 		full := filepath.Join(tmp, filepath.FromSlash(dest))
-		if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		//nolint:gosec // scaffolded project dirs are intended to be world-readable
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(full, []byte(p.Files[dest]), 0o600); err != nil {
+		//nolint:gosec // scaffolded project files are intended to be world-readable
+		if err := os.WriteFile(full, []byte(p.Files[dest]), 0o644); err != nil {
 			return err
 		}
 	}

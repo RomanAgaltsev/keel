@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"io/fs"
-	"path"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert/yaml"
 
 	"github.com/RomanAgaltsev/keel"
 	"github.com/RomanAgaltsev/keel/internal/module"
@@ -17,7 +16,7 @@ import (
 func newListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List available recipe and modules",
+		Short: "List available recipes and modules",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
 
@@ -53,17 +52,14 @@ func listRecipes() ([]recipe.Recipe, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out []recipe.Recipe
+	out := make([]recipe.Recipe, 0, len(entries))
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
-		b, err := fs.ReadFile(keel.BuiltinFS, path.Join("recipes", e.Name()))
+		name := strings.TrimSuffix(e.Name(), ".yaml")
+		r, err := recipe.Load(keel.BuiltinFS, name)
 		if err != nil {
-			return nil, err
-		}
-		var r recipe.Recipe
-		if err := yaml.Unmarshal(b, &r); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

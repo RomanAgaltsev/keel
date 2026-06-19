@@ -21,6 +21,8 @@ func Resolve(l Loader, names []string) ([]manifest.Manifest, error) {
 	var visit func(name string) error
 	visit = func(name string) error {
 		switch state[name] {
+		case unvisited:
+			// not yet seen — process below
 		case done:
 			return nil
 		case visiting:

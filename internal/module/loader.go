@@ -11,7 +11,7 @@ import (
 	"github.com/RomanAgaltsev/keel/internal/manifest"
 )
 
-// Loader loads module manifest and template file trees by module name.
+// Loader loads module manifests and template file trees by module name.
 type Loader interface {
 	Load(name string) (manifest.Manifest, error)
 	ModuleNames() ([]string, error)
@@ -24,7 +24,7 @@ type FSLoader struct {
 	fsys fs.FS
 }
 
-// NewFSLoader returns a loader over the given filesystem (e.g. the embedded BuiltFS).
+// NewFSLoader returns a loader over the given filesystem (e.g. the embedded BuiltinFS).
 func NewFSLoader(fsys fs.FS) *FSLoader {
 	return &FSLoader{fsys: fsys}
 }

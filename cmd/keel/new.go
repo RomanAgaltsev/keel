@@ -73,18 +73,18 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 
 	target := f.target
 	if target == "" {
-		target = str(ans, "repo_name")
+		target = ans.String("repo_name")
 	}
 
 	// Provider selection.
-	createRemote, _ := ans["create_remote"].(bool)
-	providerName := str(ans, "provider")
+	createRemote := ans.Bool("create_remote")
+	providerName := ans.String("provider")
 	var p provider.Provider
 	if createRemote && f.remoteURL == "" {
 		var err error
 		p, err = provider.For(providerName, provider.Env{
 			Token: firstEnv("KEEL_GITHUB_TOKEN", "GITHUB_TOKEN"),
-			Owner: ownerOrEnv(str(ans, "module_path")),
+			Owner: ownerOrEnv(ans.String("module_path")),
 		})
 		if err != nil {
 			return err
@@ -132,8 +132,6 @@ func printResult(out io.Writer, target string, res scaffold.Result) {
 		fmt.Fprintf(out, "  next: %s\n", s)
 	}
 }
-
-func str(a answers.Answers, k string) string { s, _ := a[k].(string); return s }
 
 func firstEnv(keys ...string) string {
 	for _, k := range keys {

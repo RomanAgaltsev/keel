@@ -117,6 +117,38 @@ func TestRunBothExistNoPush(t *testing.T) {
 	require.NotEmpty(t, res.NextSteps) // printed reconcile guidance
 }
 
+// Dry-run must not probe the remote (no network): the provider's RepoExists is
+// never called, and nothing lands on disk. Regression test for the dry-run network bug.
+func TestRunDryRunSkipsRemoteCheck(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "demo")
+	f := &provider.Fake{} // baseOpts sets CreateRemote: true, which used to trigger a check
+	opts := baseOpts(target, f)
+	opts.DryRun = true
+
+	res, err := scaffold.Run(context.Background(), opts)
+	require.NoError(t, err)
+	require.True(t, res.DryRun)
+	require.False(t, f.ExistsCalled, "dry-run must not call the provider (no network)")
+	require.NoDirExists(t, target)
+}
+
+// State 3 via --remote-url (no provider): clone-then-overlay must still push the
+// overlay commit. Regression test for the skipped-push bug.
+func TestRunRemoteURLClonePushes(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "demo")
+	opts := baseOpts(target, nil) // no provider; remote supplied by URL
+	opts.RemoteURL = localBare(t)
+
+	res, err := scaffold.Run(context.Background(), opts)
+	require.NoError(t, err)
+	require.True(t, res.State.RemotePresent)
+	require.False(t, res.State.LocalPresent)
+	require.False(t, res.Created)                            // no provider ⇒ nothing created
+	require.True(t, res.Pushed)                              // clone-then-overlay now pushes via the remote URL
+	require.FileExists(t, filepath.Join(target, "seed.txt")) // cloned from the remote
+	require.FileExists(t, filepath.Join(target, "go.mod"))   // overlaid by keel
+}
+
 // emptyBare creates an EMPTY bare repo (the shape of a freshly created remote),
 // so a first push fast-forwards rather than being rejected.
 func emptyBare(t *testing.T) string {
