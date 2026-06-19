@@ -1,0 +1,14 @@
+name: release
+description: release-please + GoReleaser release pipeline
+version: 1.0.0
+language: go
+requires: [base-layout]
+files: # dest is always "." — src carries the subdir (see Task 5 note)
+  - src: ".goreleaser.yaml"
+    dest: "."
+  - src: "release-please-config.json"
+    dest: "."
+  - src: ".release-please-manifest.json"
+    dest: "."
+  - src: ".github/workflows/release.yml"
+    dest: "."

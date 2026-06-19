@@ -1,0 +1,23 @@
+name: meta-scaffold
+on:
+  schedule: [{ cron: "0 5 * * 1" }]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scaffold-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: arduino/setup-task@v2
+        with: { version: 3.x, repo-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: task build
+      - run: ./bin/keel new --no-input --answers testdata/meta/answers.yaml --target /tmp/metademo
+      - name: Run the scaffolded repo's own gate
+        working-directory: /tmp/metademo
+        run: |
+          go mod tidy
+          task tools
+          task ci

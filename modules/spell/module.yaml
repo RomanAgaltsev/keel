@@ -1,0 +1,10 @@
+name: spell
+description: Spell-check with crate-ci/typos
+version: 1.0.0
+language: any
+requires: [base-layout]
+files: # dest is always "." — src carries the subdir (see Task 5 note)
+  - src: ".typos.toml"
+    dest: "."
+  - src: ".github/workflows/typos.yml"
+    dest: "."

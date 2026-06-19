@@ -1,0 +1,10 @@
+name: lint
+description: golangci-lint v2 config + lint workflow
+version: 1.0.0
+language: go
+requires: [base-layout]
+files:
+  - src: ".golangci.yml"
+    dest: "."
+  - src: ".github/workflows/lint.yml"
+    dest: "."

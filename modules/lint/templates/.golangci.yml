@@ -1,0 +1,27 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: standard
+  enable:
+    [
+      revive,
+      gosec,
+      bodyclose,
+      misspell,
+      unconvert,
+      usestdlibvars,
+      copyloopvar,
+      nilerr,
+      nolintlint,
+    ]
+  settings:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [gosec, errcheck]
+formatters:
+  enable: [gofumpt, goimports]

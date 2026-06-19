@@ -27,6 +27,9 @@ func renderModule(m manifest.Manifest, tfs fs.FS, a answers.Answers) (map[string
 		if err != nil {
 			return nil, fmt.Errorf("module %q: glob %q: %w", m.Name, rule.Src, err)
 		}
+		if len(matches) == 0 && !strings.ContainsAny(rule.Src, "*?[") {
+			return nil, fmt.Errorf("module %q: file %q not found in templates", m.Name, rule.Src)
+		}
 		for _, src := range matches {
 			if err := renderFile(out, m, tfs, a, rule.Dest, src); err != nil {
 				return nil, err
@@ -56,11 +59,15 @@ func renderFile(out map[string]string, m manifest.Manifest, tfs fs.FS, a answers
 	if err != nil {
 		return err
 	}
-	content, err := renderString(string(raw), a)
-	if err != nil {
-		return fmt.Errorf("module %q: render %q: %w", m.Name, src, err)
+	if strings.HasSuffix(src, ".tmpl") {
+		content, err := renderString(string(raw), a)
+		if err != nil {
+			return fmt.Errorf("module %q: render %q: %w", m.Name, src, err)
+		}
+		out[dest] = content
+	} else {
+		out[dest] = string(raw) // verbatim — preserves ${{ }} and {{ }}
 	}
-	out[dest] = content
 	return nil
 }
 

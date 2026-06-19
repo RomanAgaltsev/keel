@@ -1,0 +1,13 @@
+name: test
+description: race/shuffle test workflow with coverage
+version: 1.0.0
+language: go
+requires: [base-layout]
+questions:
+  - id: enable_codecov
+    prompt: "Upload coverage to Codecov?"
+    type: bool
+    default: false
+files:
+  - src: ".github/workflows/test.yml"
+    dest: "." # dest is always "." — src carries the subdir

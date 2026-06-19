@@ -18,7 +18,17 @@ func TestLoaderLoadModule(t *testing.T) {
 
 	names, err := l.ModuleNames()
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"base-layout", "go-mod"}, names)
+	require.ElementsMatch(t, []string{
+		"base-layout",
+		"go-mod",
+		"taskfile",
+		"lint",
+		"test",
+		"security",
+		"release",
+		"dep-bots",
+		"spell",
+	}, names)
 
 	_, err = l.Load("does-not-exist")
 	require.Error(t, err)
