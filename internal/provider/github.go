@@ -68,7 +68,7 @@ func (g *GitHub) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRep
 		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 			return false, RemoteRepo{}, err
 		}
-		return true, RemoteRepo{CloneURL: r.CloneURL, HTMLURL: r.HTMLURL}, nil
+		return true, RemoteRepo(r), nil
 	case http.StatusNotFound:
 		return false, RemoteRepo{}, nil
 	default:
@@ -78,9 +78,12 @@ func (g *GitHub) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRep
 
 // CreateRepo creates owner/name under the authenticated user.
 func (g *GitHub) CreateRepo(ctx context.Context, spec RepoSpec) (RemoteRepo, error) {
-	payload, _ := json.Marshal(map[string]any{
+	payload, err := json.Marshal(map[string]any{
 		"name": spec.Name, "description": spec.Description, "private": spec.Private,
 	})
+	if err != nil {
+		return RemoteRepo{}, fmt.Errorf("github: create %s: %w", spec.Name, err)
+	}
 	url := g.baseURL + "/user/repos"
 	resp, err := g.do(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
@@ -94,7 +97,7 @@ func (g *GitHub) CreateRepo(ctx context.Context, spec RepoSpec) (RemoteRepo, err
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return RemoteRepo{}, err
 	}
-	return RemoteRepo{CloneURL: r.CloneURL, HTMLURL: r.HTMLURL}, nil
+	return RemoteRepo(r), nil
 }
 
 type ghRepo struct {
