@@ -25,6 +25,7 @@ func TestLoaderLoadModule(t *testing.T) {
 		"lint",
 		"test",
 		"security",
+		"release",
 	}, names)
 
 	_, err = l.Load("does-not-exist")
