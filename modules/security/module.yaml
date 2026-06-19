@@ -1,0 +1,25 @@
+name: security
+description: CodeQL, govulncheck, dependency-review, workflow linting
+version: 1.0.0
+language: go
+requires: [base-layout]
+questions:
+  - id: enable_codeql
+    prompt: "Enable CodeQL scanning?"
+    type: bool
+    default: true
+  - id: enable_govulncheck
+    prompt: "Enable govulncheck?"
+    type: bool
+    default: true
+files: # dest is always "." — src carries the subdir (see Task 5 note)
+  - src: ".github/workflows/codeql.yml"
+    dest: "."
+    when: "{{ .enable_codeql }}"
+  - src: ".github/workflows/govulncheck.yml"
+    dest: "."
+    when: "{{ .enable_govulncheck }}"
+  - src: ".github/workflows/dependency-review.yml"
+    dest: "."
+  - src: ".github/workflows/actionlint.yml"
+    dest: "."
