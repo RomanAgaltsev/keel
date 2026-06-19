@@ -1,0 +1,13 @@
+repo_name: metademo
+description: meta integration demo
+module_path: github.com/RomanAgaltsev/metademo
+author_name: Roman Agaltsev
+author_email: roman-agalcev@yandex.ru
+license: MIT
+visibility: public
+provider: none
+create_remote: false
+enable_codeql: true
+enable_govulncheck: true
+enable_codecov: false
+dep_bot: dependabot
