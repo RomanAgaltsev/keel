@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/RomanAgaltsev/keel/compare/v1.2.0...v1.3.0) (2026-06-20)
+
+
+### Features
+
+* external template modules ([#14](https://github.com/RomanAgaltsev/keel/issues/14)) ([4fae868](https://github.com/RomanAgaltsev/keel/commit/4fae8683854d2fa715f73f6b712f88349036f042))
+
 ## [1.2.0](https://github.com/RomanAgaltsev/keel/compare/v1.1.0...v1.2.0) (2026-06-20)
 
 
