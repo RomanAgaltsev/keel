@@ -30,6 +30,11 @@ tasks:
     cmds:
       - go run ./internal/tools/modulecheck origin/main
 
+  modules:bump:
+    desc: patch-bump every changed module missing a version bump
+    cmds:
+      - go run ./internal/tools/modulebump --auto
+
   formatters:install:
     desc: install gofumpt and gci
     cmds:
