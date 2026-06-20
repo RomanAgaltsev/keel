@@ -23,7 +23,7 @@ func TestGoServiceGolden(t *testing.T) {
 	rec, err := recipe.Load(keel.BuiltinFS, "go-service")
 	require.NoError(t, err)
 
-	plan, err := render.BuildRecipe(l, rec.Modules, answers.Answers{
+	plan, err := render.BuildRecipe(l, rec.ModuleNames(), answers.Answers{
 		"repo_name":          "demo",
 		"description":        "a demo service",
 		"module_path":        "github.com/RomanAgaltsev/demo",
