@@ -100,7 +100,7 @@ func evalWhen(cond string, a answers.Answers) (bool, error) {
 // safeDest rejects destinations that would write outside the target tree.
 func safeDest(dest string) error {
 	clean := path.Clean(dest)
-	if clean == "" || path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
+	if clean == "." || path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
 		return fmt.Errorf("unsafe destination %q escapes the target", dest)
 	}
 	return nil

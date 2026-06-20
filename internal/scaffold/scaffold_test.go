@@ -204,8 +204,7 @@ func TestRunRecordsExternalProvenance(t *testing.T) {
 	require.FileExists(t, filepath.Join(target, "log.go"))
 	lk, err := lock.Read(filepath.Join(target, ".scaffold.lock"))
 	require.NoError(t, err)
-	var got map[string]string // name -> source
-	got = map[string]string{}
+	got := map[string]string{} // name -> source
 	for _, m := range lk.Modules {
 		got[m.Name] = m.Source
 	}

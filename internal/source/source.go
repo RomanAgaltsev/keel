@@ -4,6 +4,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -32,7 +33,7 @@ func Resolve(ctx context.Context, src recipe.Source, recipeDir string) (Resolved
 	case src.Git != "":
 		return resolveGit(ctx, src)
 	default:
-		return Resolved{}, fmt.Errorf("source has neither dir nor git")
+		return Resolved{}, errors.New("source has neither dir nor git")
 	}
 }
 
@@ -71,7 +72,7 @@ func resolveGit(ctx context.Context, src recipe.Source) (Resolved, error) {
 	dir := filepath.Join(cacheRoot, "keel", "modules", slug(src.Git)+"@"+sanitize(src.Ref))
 	if _, statErr := os.Stat(dir); statErr != nil {
 		if err := clone(ctx, src.Git, src.Ref, dir); err != nil {
-			_ = os.RemoveAll(dir)
+			_ = os.RemoveAll(dir) //nolint:gosec // best-effort cleanup of a partial clone; the clone error is returned
 			return Resolved{}, err
 		}
 	}
@@ -105,7 +106,7 @@ func clone(ctx context.Context, url, ref, dir string) error {
 	} else {
 		_ = out
 	}
-	_ = os.RemoveAll(dir)
+	_ = os.RemoveAll(dir) //nolint:gosec // best-effort cleanup of the failed shallow clone before retrying with a full clone
 	if out, err := exec.CommandContext(ctx, "git", "clone", url, dir).CombinedOutput(); err != nil {
 		return fmt.Errorf("git clone %s: %w: %s", url, err, strings.TrimSpace(string(out)))
 	}

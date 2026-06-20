@@ -2,6 +2,7 @@
 package recipe
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -47,7 +48,7 @@ func (r *ModuleRef) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 	if m.Name == "" {
-		return fmt.Errorf("recipe module entry is missing a name")
+		return errors.New("recipe module entry is missing a name")
 	}
 	if m.Source != nil {
 		if err := m.Source.validate(); err != nil {
@@ -69,9 +70,9 @@ type Source struct {
 func (s Source) validate() error {
 	switch {
 	case s.Dir != "" && s.Git != "":
-		return fmt.Errorf("source has both dir and git")
+		return errors.New("source has both dir and git")
 	case s.Dir == "" && s.Git == "":
-		return fmt.Errorf("source has neither dir nor git")
+		return errors.New("source has neither dir nor git")
 	}
 	return nil
 }
