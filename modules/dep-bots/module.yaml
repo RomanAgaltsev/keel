@@ -1,6 +1,6 @@
 name: dep-bots
 description: Dependabot or Renovate dependency-update config
-version: 1.0.0
+version: 1.0.1
 language: go
 requires: [base-layout]
 questions:
@@ -8,7 +8,7 @@ questions:
     prompt: "Dependency update bot"
     type: select
     options: [dependabot, renovate, none]
-    default: dependabot
+    default: renovate
 files: # dest is always "." — src carries the subdir (see Task 5 note)
   - src: ".github/dependabot.yml"
     dest: "."

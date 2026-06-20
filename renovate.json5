@@ -1,0 +1,34 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended"],
+  schedule: ["before 6am on monday"],
+  // Also scan the embedded template workflows for action/docker bumps — the
+  // default github-actions manager only looks at the real .github/workflows.
+  "github-actions": {
+    managerFilePatterns: [
+      "/^\\.github/workflows/[^/]+\\.ya?ml$/",
+      "/^modules/[^/]+/templates/\\.github/workflows/[^/]+\\.ya?ml$/",
+    ],
+  },
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: [
+        "/(^|/)Taskfile\\.ya?ml$/",
+        "/^modules/[^/]+/templates/.+\\.ya?ml$/",
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/",
+      ],
+      matchStrings: [
+        "(?:GOLANGCI_VERSION|GOLANGCI_LINT_VERSION):\\s*[\"']?(?<currentValue>v[0-9.]+)",
+        "version:\\s*[\"']?(?<currentValue>v[0-9.]+)[\"']?\\s*#\\s*golangci-lint",
+      ],
+      depNameTemplate: "golangci/golangci-lint",
+      datasourceTemplate: "github-releases",
+    },
+  ],
+  postUpgradeTasks: {
+    commands: ["go run ./internal/tools/modulebump --auto"],
+    fileFilters: ["modules/**"],
+    executionMode: "branch",
+  },
+}

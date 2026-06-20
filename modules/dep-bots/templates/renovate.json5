@@ -2,4 +2,22 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended"],
   schedule: ["before 6am on monday"],
+  // golangci-lint is pinned as a plain string in Taskfile.yml (GOLANGCI_VERSION)
+  // and in .github/workflows/lint.yml (version: ... # golangci-lint). The default
+  // managers don't track those, so a customManager bumps both from one datasource.
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: [
+        "/(^|/)Taskfile\\.ya?ml$/",
+        "/(^|/)\\.github/workflows/[^/]+\\.ya?ml$/",
+      ],
+      matchStrings: [
+        "(?:GOLANGCI_VERSION|GOLANGCI_LINT_VERSION):\\s*[\"']?(?<currentValue>v[0-9.]+)",
+        "version:\\s*[\"']?(?<currentValue>v[0-9.]+)[\"']?\\s*#\\s*golangci-lint",
+      ],
+      depNameTemplate: "golangci/golangci-lint",
+      datasourceTemplate: "github-releases",
+    },
+  ],
 }
