@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/RomanAgaltsev/keel/compare/v1.1.0...v1.2.0) (2026-06-20)
+
+
+### Features
+
+* outdated command ([#12](https://github.com/RomanAgaltsev/keel/issues/12)) ([23d37d6](https://github.com/RomanAgaltsev/keel/commit/23d37d61050e0e47fca06e93b3172a4de4a7d567))
+
 ## [1.1.0](https://github.com/RomanAgaltsev/keel/compare/v1.0.1...v1.1.0) (2026-06-20)
 
 
