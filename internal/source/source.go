@@ -70,12 +70,24 @@ func resolveGit(ctx context.Context, src recipe.Source) (Resolved, error) {
 		return Resolved{}, err
 	}
 	dir := filepath.Join(cacheRoot, "keel", "modules", slug(src.Git)+"@"+sanitize(src.Ref))
-	if _, statErr := os.Stat(dir); statErr != nil {
+
+	switch {
+	case !cacheValid(dir):
+		// No usable cache (absent, or a partial/aborted clone). Start clean.
+		_ = os.RemoveAll(dir) //nolint:gosec // drop any partial cache before a fresh clone
 		if err := clone(ctx, src.Git, src.Ref, dir); err != nil {
 			_ = os.RemoveAll(dir) //nolint:gosec // best-effort cleanup of a partial clone; the clone error is returned
 			return Resolved{}, err
 		}
+	case isMutableRef(src.Ref):
+		// A branch or tag can move upstream, so a cached clone may be stale; refresh
+		// it to the current tip. A full commit SHA is immutable — its cache is
+		// authoritative and left untouched (no network).
+		if err := fetchReset(ctx, dir, src.Ref); err != nil {
+			return Resolved{}, err
+		}
 	}
+
 	sha, err := headSHA(ctx, dir)
 	if err != nil {
 		return Resolved{}, err
@@ -96,22 +108,55 @@ func resolveGit(ctx context.Context, src recipe.Source) (Resolved, error) {
 }
 
 // clone shallow-clones ref; if ref is a commit SHA (which --branch rejects), it
-// falls back to a full clone + checkout.
+// falls back to a full clone + checkout. The "--" end-of-options separators keep a
+// ref or url that begins with "-" from being parsed by git as a flag.
 func clone(ctx context.Context, url, ref, dir string) error {
 	if err := os.MkdirAll(filepath.Dir(dir), 0o750); err != nil {
 		return err
 	}
-	if out, err := exec.CommandContext(ctx, "git", "clone", "--depth", "1", "--branch", ref, url, dir).CombinedOutput(); err == nil {
+	// Try a fast shallow clone of the ref first; on failure fall back below.
+	if _, err := exec.CommandContext(ctx, "git", "clone", "--depth", "1", "--branch", ref, "--", url, dir).CombinedOutput(); err == nil {
 		return nil
-	} else {
-		_ = out
 	}
-	_ = os.RemoveAll(dir) //nolint:gosec // best-effort cleanup of the failed shallow clone before retrying with a full clone
-	if out, err := exec.CommandContext(ctx, "git", "clone", url, dir).CombinedOutput(); err != nil {
+	_ = os.RemoveAll(dir) //nolint:gosec // discard the partial shallow clone before retrying with a full clone
+	if out, err := exec.CommandContext(ctx, "git", "clone", "--", url, dir).CombinedOutput(); err != nil {
 		return fmt.Errorf("git clone %s: %w: %s", url, err, strings.TrimSpace(string(out)))
 	}
-	if out, err := exec.CommandContext(ctx, "git", "-C", dir, "checkout", ref).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, "git", "-C", dir, "checkout", ref, "--").CombinedOutput(); err != nil {
 		return fmt.Errorf("git checkout %s in %s: %w: %s", ref, url, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// cacheValid reports whether dir holds a usable clone (a populated .git), so a
+// partial or aborted clone left behind by a killed process is not trusted.
+func cacheValid(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, ".git"))
+	return err == nil
+}
+
+// isMutableRef reports whether ref can move upstream. Only a full 40-character hex
+// commit SHA is treated as immutable; branches and tags are refreshed on resolve.
+func isMutableRef(ref string) bool {
+	if len(ref) != 40 {
+		return true
+	}
+	for _, r := range ref {
+		hex := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+		if !hex {
+			return true
+		}
+	}
+	return false
+}
+
+// fetchReset updates an existing cache clone to the upstream tip of ref.
+func fetchReset(ctx context.Context, dir, ref string) error {
+	if out, err := exec.CommandContext(ctx, "git", "-C", dir, "fetch", "--depth", "1", "origin", ref).CombinedOutput(); err != nil {
+		return fmt.Errorf("git fetch %s in %s: %w: %s", ref, dir, err, strings.TrimSpace(string(out)))
+	}
+	if out, err := exec.CommandContext(ctx, "git", "-C", dir, "reset", "--hard", "FETCH_HEAD").CombinedOutput(); err != nil {
+		return fmt.Errorf("git reset in %s: %w: %s", dir, err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -73,6 +75,11 @@ func (g *GitHubReleases) LatestTag(ctx context.Context, repo string) (string, er
 	case http.StatusNotFound:
 		return "", ErrNoRelease
 	default:
+		// Include GitHub's message body (e.g. a rate-limit notice) for diagnostics.
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10)) //nolint:gosec // best-effort read of the error body for diagnostics
+		if msg := strings.TrimSpace(string(body)); msg != "" {
+			return "", fmt.Errorf("releases %s: status %d: %s", repo, resp.StatusCode, msg)
+		}
 		return "", fmt.Errorf("releases %s: status %d", repo, resp.StatusCode)
 	}
 }

@@ -81,14 +81,19 @@ func (r *Repo) Commit(ctx context.Context, msg string) error {
 	return err
 }
 
-// AddRemote adds (or replaces) a named remote.
+// AddRemote adds (or replaces) a named remote. It only falls back to set-url when
+// the remote genuinely already exists; any other failure is returned as-is so its
+// real cause isn't masked by a second-order set-url error.
 func (r *Repo) AddRemote(ctx context.Context, name, url string) error {
-	if _, err := r.Run(ctx, "remote", "add", name, url); err != nil {
-		// If it already exists, set the URL instead.
-		_, serr := r.Run(ctx, "remote", "set-url", name, url)
-		return serr
+	out, err := r.Run(ctx, "remote", "add", name, url)
+	if err == nil {
+		return nil
 	}
-	return nil
+	if !strings.Contains(out, "already exists") {
+		return err
+	}
+	_, serr := r.Run(ctx, "remote", "set-url", name, url)
+	return serr
 }
 
 // Push pushes branch to remote, setting upstream.
@@ -97,10 +102,11 @@ func (r *Repo) Push(ctx context.Context, remote, branch string) error {
 	return err
 }
 
-// Clone clones url into dir and returns a Repo for it.
+// Clone clones url into dir and returns a Repo for it. The "--" keeps a url that
+// begins with "-" from being parsed as a git flag.
 func Clone(ctx context.Context, url, dir string) (*Repo, error) {
-	if _, err := exec.CommandContext(ctx, "git", "clone", url, dir).CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("git clone %q: %w", url, err)
+	if out, err := exec.CommandContext(ctx, "git", "clone", "--", url, dir).CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("git clone %q: %w: %s", url, err, strings.TrimSpace(string(out)))
 	}
 	return New(dir), nil
 }

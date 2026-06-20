@@ -34,18 +34,18 @@ func run(base string) error {
 	if len(touched) == 0 {
 		return nil
 	}
-	old, new := map[string]string{}, map[string]string{}
+	prevVers, headVers := map[string]string{}, map[string]string{}
 	for _, m := range touched {
 		nv, err := versionAt("", m)
 		if err != nil {
 			return fmt.Errorf("read head version of %q: %w", m, err)
 		}
-		new[m] = nv
+		headVers[m] = nv
 		if ov, err := versionAt(base, m); err == nil {
-			old[m] = ov // absent at base => new module, left out of old
+			prevVers[m] = ov // absent at base => new module, left out of prevVers
 		}
 	}
-	if off := modver.Offenders(touched, old, new); len(off) > 0 {
+	if off := modver.Offenders(touched, prevVers, headVers); len(off) > 0 {
 		return fmt.Errorf("modules changed without a version bump in module.yaml: %s\n"+
 			"bump them (semver: patch=tool/SHA/typo, minor=new file/question, major=removed/renamed/retyped) "+
 			"or run `task modules:bump`", strings.Join(off, ", "))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/RomanAgaltsev/keel"
 	"github.com/RomanAgaltsev/keel/internal/answers"
+	"github.com/RomanAgaltsev/keel/internal/config"
 	"github.com/RomanAgaltsev/keel/internal/module"
 	"github.com/RomanAgaltsev/keel/internal/prompt"
 	"github.com/RomanAgaltsev/keel/internal/provider"
@@ -51,14 +53,18 @@ func newNewCmd() *cobra.Command {
 }
 
 func runNew(cmd *cobra.Command, f *newFlags) error {
-	// Load preset answers (if any).
-	preset := answers.Answers{}
+	// Seed defaults from keel's user config (and git config), then let an explicit
+	// --answers file override them. These become preset values, so the wizard still
+	// pre-fills them and the user can edit them interactively.
+	preset := configDefaults(cmd.Context())
 	if f.answersPath != "" {
 		p, err := prompt.LoadAnswersFile(f.answersPath)
 		if err != nil {
 			return err
 		}
-		preset = p
+		for k, v := range p {
+			preset[k] = v // an explicit answers file wins over config defaults
+		}
 	}
 
 	// Resolve the recipe (builtin name or a file path) and any external sources.
@@ -141,6 +147,46 @@ func printResult(out io.Writer, target string, res scaffold.Result) {
 	for _, s := range res.NextSteps {
 		fmt.Fprintf(out, "  next: %s\n", s)
 	}
+}
+
+// configDefaults builds preset answers from keel's user config, falling back to
+// `git config` for any author field it doesn't supply. Failures are non-fatal: a
+// missing config simply yields no defaults.
+func configDefaults(ctx context.Context) answers.Answers {
+	out := answers.Answers{}
+	if p, err := config.Path(); err == nil {
+		if c, err := config.LoadFrom(p); err == nil {
+			if c.AuthorName != "" {
+				out["author_name"] = c.AuthorName
+			}
+			if c.AuthorEmail != "" {
+				out["author_email"] = c.AuthorEmail
+			}
+			if c.Provider != "" {
+				out["provider"] = c.Provider
+			}
+		}
+	}
+	if _, ok := out["author_name"]; !ok {
+		if v := gitConfig(ctx, "user.name"); v != "" {
+			out["author_name"] = v
+		}
+	}
+	if _, ok := out["author_email"]; !ok {
+		if v := gitConfig(ctx, "user.email"); v != "" {
+			out["author_email"] = v
+		}
+	}
+	return out
+}
+
+// gitConfig returns `git config --get <key>`, or "" if unset or git is unavailable.
+func gitConfig(ctx context.Context, key string) string {
+	out, err := exec.CommandContext(ctx, "git", "config", "--get", key).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func firstEnv(keys ...string) string {

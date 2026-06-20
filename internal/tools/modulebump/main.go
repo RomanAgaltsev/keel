@@ -52,18 +52,18 @@ func auto(base, level string) error {
 		return err
 	}
 	touched := modver.ModulesTouched(changed)
-	old, new := map[string]string{}, map[string]string{}
+	prevVers, headVers := map[string]string{}, map[string]string{}
 	for _, m := range touched {
 		nv, err := versionAt("", m)
 		if err != nil {
 			return err
 		}
-		new[m] = nv
+		headVers[m] = nv
 		if ov, err := versionAt(base, m); err == nil {
-			old[m] = ov
+			prevVers[m] = ov
 		}
 	}
-	for _, m := range modver.Offenders(touched, old, new) {
+	for _, m := range modver.Offenders(touched, prevVers, headVers) {
 		bumped, err := bumpModule(m, level)
 		if err != nil {
 			return err

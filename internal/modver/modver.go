@@ -30,16 +30,16 @@ func ModulesTouched(changed []string) []string {
 }
 
 // Offenders returns the touched modules whose version did not change between the
-// base (old) and head (new) revisions. Modules absent from old (newly added) are
-// not offenders. Order matches the input.
-func Offenders(touched []string, old, new map[string]string) []string {
+// base and head revisions. Modules absent from base (newly added) are not
+// offenders. Order matches the input.
+func Offenders(touched []string, base, head map[string]string) []string {
 	var out []string
 	for _, m := range touched {
-		o, existed := old[m]
+		b, existed := base[m]
 		if !existed {
 			continue // new module - no prior version to bump from
 		}
-		if o == new[m] {
+		if b == head[m] {
 			out = append(out, m)
 		}
 	}
@@ -49,18 +49,9 @@ func Offenders(touched []string, old, new map[string]string) []string {
 // Bump increments a semver string ("MAJOR.MINOR.PATCH", optionally "v"-prefixed)
 // at level "patch", "minor", or "major".
 func Bump(version, level string) (string, error) {
-	core := strings.TrimPrefix(version, "v")
-	parts := strings.Split(core, ".")
-	if len(parts) != 3 {
-		return "", fmt.Errorf("not a semver version: %q", version)
-	}
-	nums := make([]int, 3)
-	for i, p := range parts {
-		n, err := strconv.Atoi(p)
-		if err != nil {
-			return "", fmt.Errorf("not a semver version: %q", version)
-		}
-		nums[i] = n
+	nums, err := parseSemver(version)
+	if err != nil {
+		return "", err
 	}
 	switch level {
 	case "major":

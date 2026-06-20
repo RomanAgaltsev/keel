@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -73,6 +74,17 @@ func (s Source) validate() error {
 		return errors.New("source has both dir and git")
 	case s.Dir == "" && s.Git == "":
 		return errors.New("source has neither dir nor git")
+	}
+	if s.Git != "" {
+		if s.Ref == "" {
+			return errors.New("git source requires a ref (branch, tag, or commit SHA)")
+		}
+		if strings.HasPrefix(s.Ref, "-") {
+			return fmt.Errorf("invalid git ref %q: must not start with '-'", s.Ref)
+		}
+	}
+	if s.Dir != "" && (s.Subdir != "" || s.Ref != "") {
+		return errors.New("dir source must not set subdir or ref")
 	}
 	return nil
 }
