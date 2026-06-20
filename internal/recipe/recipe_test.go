@@ -1,6 +1,8 @@
 package recipe
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -42,4 +44,18 @@ func TestParseRecipeRejectsBothAndNeither(t *testing.T) {
 
 	neither := []byte("modules:\n  - name: x\n    source: {}\n")
 	require.Error(t, yaml.Unmarshal(neither, &Recipe{}))
+}
+
+func TestLoadFile(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "r.yaml")
+	require.NoError(t, os.WriteFile(p, []byte("name: x\nlanguage: go\nmodules: [base-layout]\n"), 0o644))
+
+	r, err := LoadFile(p)
+	require.NoError(t, err)
+	require.Equal(t, "x", r.Name)
+	require.Equal(t, []string{"base-layout"}, r.ModuleNames())
+
+	_, err = LoadFile(filepath.Join(dir, "nope.yaml"))
+	require.Error(t, err)
 }

@@ -4,6 +4,7 @@ package recipe
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
 
 	"gopkg.in/yaml.v3"
@@ -84,6 +85,19 @@ func Load(fsys fs.FS, name string) (Recipe, error) {
 	var r Recipe
 	if err := yaml.Unmarshal(b, &r); err != nil {
 		return Recipe{}, fmt.Errorf("parse recipe %q: %w", name, err)
+	}
+	return r, nil
+}
+
+// LoadFile reads a recipe from a YAML file on disk (user-supplied recipes).
+func LoadFile(path string) (Recipe, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return Recipe{}, fmt.Errorf("read recipe %q: %w", path, err)
+	}
+	var r Recipe
+	if err := yaml.Unmarshal(b, &r); err != nil {
+		return Recipe{}, fmt.Errorf("parse recipe %q: %w", path, err)
 	}
 	return r, nil
 }
