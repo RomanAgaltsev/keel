@@ -42,3 +42,22 @@ func TestBump(t *testing.T) {
 	_, err = Bump("1.0.0", "nope")
 	require.Error(t, err)
 }
+
+func TestCompare(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want int
+	}{
+		{"1.0.0", "1.0.1", -1},
+		{"1.2.0", "1.1.9", 1},
+		{"v2.3.0", "v2.3.0", 0},
+		{"v2.3.0", "2.3.1", -1}, // mixed v-prefix
+	}
+	for _, c := range cases {
+		got, err := Compare(c.a, c.b)
+		require.NoError(t, err)
+		require.Equal(t, c.want, got, "%s vs %s", c.a, c.b)
+	}
+	_, err := Compare("1.0", "1.0.0")
+	require.Error(t, err)
+}

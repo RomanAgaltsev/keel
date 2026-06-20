@@ -78,3 +78,41 @@ func Bump(version, level string) (string, error) {
 	}
 	return out, nil
 }
+
+// Compare returns -1, 0, or 1 as a is less than, equal to, or greater than b.
+// Both must be valid semver, optionally "v"-prefixed.
+func Compare(a, b string) (int, error) {
+	an, err := parseSemver(a)
+	if err != nil {
+		return 0, err
+	}
+	bn, err := parseSemver(b)
+	if err != nil {
+		return 0, err
+	}
+	for i := range 3 {
+		switch {
+		case an[i] < bn[i]:
+			return -1, nil
+		case an[i] > bn[i]:
+			return 1, nil
+		}
+	}
+	return 0, nil
+}
+
+func parseSemver(v string) ([3]int, error) {
+	var out [3]int
+	parts := strings.Split(strings.TrimPrefix(v, "v"), ".")
+	if len(parts) != 3 {
+		return out, fmt.Errorf("not a semver version: %q", v)
+	}
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return out, fmt.Errorf("not a semver version: %q", v)
+		}
+		out[i] = n
+	}
+	return out, nil
+}
