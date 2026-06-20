@@ -3,10 +3,16 @@ package prompt
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/manifest"
 )
+
+// supportedTypes are the question types keel knows how to prompt for and render.
+var supportedTypes = map[string]bool{
+	"": true, "string": true, "bool": true, "select": true, "multiselect": true, "int": true,
+}
 
 // Asker supplies answers for questions still unanswered after the preset.
 type Asker interface {
@@ -28,6 +34,9 @@ func MergeQuestions(core, mod []manifest.Question) ([]manifest.Question, error) 
 	seen := map[string]manifest.Question{}
 	out := make([]manifest.Question, 0, len(core)+len(mod))
 	for _, q := range append(append([]manifest.Question{}, core...), mod...) {
+		if !supportedTypes[q.Type] {
+			return nil, fmt.Errorf("question %q: unsupported type %q", q.ID, q.Type)
+		}
 		if prev, ok := seen[q.ID]; ok {
 			if !reflect.DeepEqual(prev, q) {
 				return nil, fmt.Errorf("question %q defined twice with conflicting definitions", q.ID)
@@ -48,21 +57,44 @@ func Collect(qs []manifest.Question, preset answers.Answers, asker Asker) (answe
 	for k, v := range preset {
 		out[k] = v
 	}
+	if err := askMissing(qs, out, asker); err != nil {
+		return nil, err
+	}
+	if err := applyDefaults(qs, out); err != nil {
+		return nil, err
+	}
+	if err := coerceInts(qs, out); err != nil {
+		return nil, err
+	}
+	if err := validate(out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
 
-	if asker != nil {
-		var missing []manifest.Question
-		for _, q := range qs {
-			if _, ok := out[q.ID]; !ok {
-				missing = append(missing, q)
-			}
-		}
-		if len(missing) > 0 {
-			if err := asker.Ask(missing, out); err != nil {
-				return nil, fmt.Errorf("interactive prompt: %w", err)
-			}
+// askMissing fills any unanswered questions interactively (no-op when asker is nil).
+func askMissing(qs []manifest.Question, out answers.Answers, asker Asker) error {
+	if asker == nil {
+		return nil
+	}
+	var missing []manifest.Question
+	for _, q := range qs {
+		if _, ok := out[q.ID]; !ok {
+			missing = append(missing, q)
 		}
 	}
+	if len(missing) == 0 {
+		return nil
+	}
+	if err := asker.Ask(missing, out); err != nil {
+		return fmt.Errorf("interactive prompt: %w", err)
+	}
+	return nil
+}
 
+// applyDefaults fills still-unanswered questions from their default, and errors on
+// a missing required answer.
+func applyDefaults(qs []manifest.Question, out answers.Answers) error {
 	for _, q := range qs {
 		if _, ok := out[q.ID]; ok {
 			continue
@@ -72,14 +104,38 @@ func Collect(qs []manifest.Question, preset answers.Answers, asker Asker) (answe
 			continue
 		}
 		if q.Required {
-			return nil, fmt.Errorf("missing required answer %q", q.ID)
+			return fmt.Errorf("missing required answer %q", q.ID)
 		}
 	}
+	return nil
+}
 
-	if err := validate(out); err != nil {
-		return nil, err
+// coerceInts normalizes int-typed answers to a Go int. The wizard collects them as
+// strings, and an answers file may carry them as strings too; rendering and any
+// numeric use expect a real number.
+func coerceInts(qs []manifest.Question, a answers.Answers) error {
+	for _, q := range qs {
+		if q.Type != "int" {
+			continue
+		}
+		v, ok := a[q.ID]
+		if !ok {
+			continue
+		}
+		switch n := v.(type) {
+		case int:
+			// already numeric
+		case string:
+			parsed, err := strconv.Atoi(n)
+			if err != nil {
+				return fmt.Errorf("answer %q must be an integer: %q", q.ID, n)
+			}
+			a[q.ID] = parsed
+		default:
+			// int64/float64 from a YAML decoder, etc. — leave as-is.
+		}
 	}
-	return out, nil
+	return nil
 }
 
 // validate applies the known per-ID rules to the resolved answers.

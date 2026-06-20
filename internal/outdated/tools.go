@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/RomanAgaltsev/keel/internal/modver"
 )
@@ -25,25 +26,45 @@ type Report struct {
 // Empty reports whether nothing is outdated.
 func (r Report) Empty() bool { return len(r.Tools) == 0 && len(r.Modules) == 0 }
 
+// toolConcurrency bounds the in-flight release lookups, to stay gentle on
+// GitHub's rate limiter while still overlapping the network latency.
+const toolConcurrency = 6
+
 // ToolUpdates resolves the latest release for each pin and returns those that are
 // behind, plus a count of pins skipped (no release, or a comparison that could not
-// be made). It is best-effort: per-pin failures are skipped, not fatal.
+// be made). It is best-effort: per-pin failures are skipped, not fatal. Lookups run
+// concurrently (bounded); the result is sorted, so output stays deterministic.
 func ToolUpdates(ctx context.Context, pins []Pin, rc ReleaseClient) (ups []ToolUpdate, skipped int) {
+	var (
+		mu  sync.Mutex
+		wg  sync.WaitGroup
+		sem = make(chan struct{}, toolConcurrency) // bound in-flight lookups
+	)
 	for _, p := range pins {
-		latest, err := rc.LatestTag(ctx, p.Repo())
-		if err != nil {
-			skipped++
-			continue
-		}
-		behind, err := isBehind(p, latest)
-		if err != nil {
-			skipped++
-			continue
-		}
-		if behind {
-			ups = append(ups, ToolUpdate{Repo: p.Repo(), Current: p.Current, Latest: latest})
-		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			latest, err := rc.LatestTag(ctx, p.Repo())
+			if err == nil {
+				if behind, berr := isBehind(p, latest); berr != nil {
+					err = berr
+				} else if behind {
+					mu.Lock()
+					ups = append(ups, ToolUpdate{Repo: p.Repo(), Current: p.Current, Latest: latest})
+					mu.Unlock()
+				}
+			}
+			if err != nil { // best-effort: a per-pin failure is skipped, never fatal
+				mu.Lock()
+				skipped++
+				mu.Unlock()
+			}
+		}()
 	}
+	wg.Wait()
 	sort.Slice(ups, func(i, j int) bool { return ups[i].Repo < ups[j].Repo })
 	return ups, skipped
 }

@@ -56,6 +56,31 @@ func TestMergeConflictErrors(t *testing.T) {
 	require.ErrorContains(t, err, "repo_name")
 }
 
+func TestMergeRejectsUnsupportedType(t *testing.T) {
+	core := prompt.CoreQuestions()
+	bad := []manifest.Question{{ID: "weird", Prompt: "?", Type: "datetime"}}
+	_, err := prompt.MergeQuestions(core, bad)
+	require.ErrorContains(t, err, "unsupported type")
+}
+
+func TestCollectCoercesIntAnswers(t *testing.T) {
+	qs := []manifest.Question{{ID: "replicas", Prompt: "Replicas", Type: "int", Required: true}}
+
+	// A string answer (as the wizard or a YAML scalar may supply) becomes an int.
+	got, err := prompt.Collect(qs, answers.Answers{"replicas": "3"}, nil)
+	require.NoError(t, err)
+	require.Equal(t, 3, got["replicas"])
+
+	// An already-int answer is preserved.
+	got, err = prompt.Collect(qs, answers.Answers{"replicas": 5}, nil)
+	require.NoError(t, err)
+	require.Equal(t, 5, got["replicas"])
+
+	// A non-numeric string is rejected.
+	_, err = prompt.Collect(qs, answers.Answers{"replicas": "many"}, nil)
+	require.ErrorContains(t, err, "integer")
+}
+
 func TestCollectInteractiveAsksMissing(t *testing.T) {
 	preset := fullPreset()
 	delete(preset, "description") // optional, but asker can fill

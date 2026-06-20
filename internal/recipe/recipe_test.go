@@ -46,6 +46,20 @@ func TestParseRecipeRejectsBothAndNeither(t *testing.T) {
 	require.Error(t, yaml.Unmarshal(neither, &Recipe{}))
 }
 
+func TestParseRecipeRejectsInvalidSources(t *testing.T) {
+	cases := map[string]string{
+		"git without ref": "modules:\n  - name: x\n    source: { git: https://h/r.git, subdir: m }\n",
+		"git ref dash":    "modules:\n  - name: x\n    source: { git: https://h/r.git, ref: \"-x\" }\n",
+		"dir with subdir": "modules:\n  - name: x\n    source: { dir: ./d, subdir: m }\n",
+		"dir with ref":    "modules:\n  - name: x\n    source: { dir: ./d, ref: v1 }\n",
+	}
+	for name, src := range cases {
+		t.Run(name, func(t *testing.T) {
+			require.Error(t, yaml.Unmarshal([]byte(src), &Recipe{}))
+		})
+	}
+}
+
 func TestLoadFile(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "r.yaml")
