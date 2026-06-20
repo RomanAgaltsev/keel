@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/RomanAgaltsev/keel/compare/v1.3.0...v1.3.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* address 2026-06-20 review findings (High/Medium/Low) ([#16](https://github.com/RomanAgaltsev/keel/issues/16)) ([f9d5e89](https://github.com/RomanAgaltsev/keel/commit/f9d5e89b7ca4b6fdcf9798b7742998f1115506ef))
+
 ## [1.3.0](https://github.com/RomanAgaltsev/keel/compare/v1.2.0...v1.3.0) (2026-06-20)
 
 
