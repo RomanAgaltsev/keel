@@ -7,6 +7,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -39,7 +41,7 @@ func run(args []string) error {
 		_, err := bumpModule(args[0], args[1])
 		return err
 	default:
-		return fmt.Errorf("usage: modulebump <module> <patch|minor|major> | modulebump --auto [level]")
+		return errors.New("usage: modulebump <module> <patch|minor|major> | modulebump --auto [level]")
 	}
 }
 
@@ -66,7 +68,7 @@ func auto(base, level string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("bumped %s -> %s\n", m, bumped)
+		fmt.Fprintf(os.Stdout, "bumped %s -> %s\n", m, bumped)
 	}
 	return nil
 }
@@ -74,7 +76,7 @@ func auto(base, level string) error {
 // bumpModule rewrites modules/<m>/module.yaml's version line and returns the new version.
 func bumpModule(m, level string) (string, error) {
 	path := "modules/" + m + "/module.yaml"
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // dev tool; path built from a local module name
 	if err != nil {
 		return "", err
 	}
@@ -101,13 +103,13 @@ func versionFrom(b []byte) (string, error) {
 		return "", err
 	}
 	if doc.Version == "" {
-		return "", fmt.Errorf("no version field")
+		return "", errors.New("no version field")
 	}
 	return doc.Version, nil
 }
 
 func changedFiles(base string) ([]string, error) {
-	out, err := exec.Command("git", "diff", "--name-only", base+"...HEAD").Output()
+	out, err := exec.CommandContext(context.Background(), "git", "diff", "--name-only", base+"...HEAD").Output() //nolint:gosec // dev tool; base is a local git ref
 	if err != nil {
 		return nil, fmt.Errorf("git diff against %q: %w", base, err)
 	}
@@ -129,7 +131,7 @@ func versionAt(ref, m string) (string, error) {
 	if ref == "" {
 		b, err = os.ReadFile(path)
 	} else {
-		b, err = exec.Command("git", "show", ref+":"+path).Output()
+		b, err = exec.CommandContext(context.Background(), "git", "show", ref+":"+path).Output() //nolint:gosec // dev tool; ref and path are local
 	}
 	if err != nil {
 		return "", err

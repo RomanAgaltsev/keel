@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -53,7 +54,7 @@ func run(base string) error {
 }
 
 func changedFiles(base string) ([]string, error) {
-	out, err := exec.Command("git", "diff", "--name-only", base+"...HEAD").Output()
+	out, err := exec.CommandContext(context.Background(), "git", "diff", "--name-only", base+"...HEAD").Output() //nolint:gosec // dev tool; base is a local git ref
 	if err != nil {
 		return nil, fmt.Errorf("git diff against %q: %w", base, err)
 	}
@@ -77,7 +78,7 @@ func versionAt(ref, m string) (string, error) {
 	if ref == "" {
 		b, err = os.ReadFile(path)
 	} else {
-		b, err = exec.Command("git", "show", ref+":"+path).Output()
+		b, err = exec.CommandContext(context.Background(), "git", "show", ref+":"+path).Output() //nolint:gosec // dev tool; ref and path are local
 	}
 	if err != nil {
 		return "", err
