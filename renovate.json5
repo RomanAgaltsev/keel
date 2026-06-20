@@ -26,4 +26,9 @@
       datasourceTemplate: "github-releases",
     },
   ],
+  postUpgradeTasks: {
+    commands: ["go run ./internal/tools/modulebump --auto"],
+    fileFilters: ["modules/**"],
+    executionMode: "branch",
+  },
 }
