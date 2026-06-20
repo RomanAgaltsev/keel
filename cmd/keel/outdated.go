@@ -104,7 +104,7 @@ func readPinFiles(path string) (map[string][]byte, error) {
 		return nil, err
 	}
 	for _, e := range entries {
-		if e.IsDir() || !(strings.HasSuffix(e.Name(), ".yml") || strings.HasSuffix(e.Name(), ".yaml")) {
+		if e.IsDir() || (!strings.HasSuffix(e.Name(), ".yml") && !strings.HasSuffix(e.Name(), ".yaml")) {
 			continue
 		}
 		b, err := os.ReadFile(filepath.Join(wfDir, e.Name()))
