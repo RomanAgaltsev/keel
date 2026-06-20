@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -15,6 +17,7 @@ import (
 	"github.com/RomanAgaltsev/keel/internal/provider"
 	"github.com/RomanAgaltsev/keel/internal/recipe"
 	"github.com/RomanAgaltsev/keel/internal/scaffold"
+	"github.com/RomanAgaltsev/keel/internal/source"
 )
 
 // newFlags holds the parsed flags for the new command.
@@ -48,8 +51,6 @@ func newNewCmd() *cobra.Command {
 }
 
 func runNew(cmd *cobra.Command, f *newFlags) error {
-	l := module.NewFSLoader(keel.BuiltinFS)
-
 	// Load preset answers (if any).
 	preset := answers.Answers{}
 	if f.answersPath != "" {
@@ -60,13 +61,22 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 		preset = p
 	}
 
-	// Resolve the recipe's module list.
-	rec, err := recipe.Load(keel.BuiltinFS, f.recipeName)
+	// Resolve the recipe (builtin name or a file path) and any external sources.
+	rec, recipeDir, err := loadRecipe(f.recipeName)
 	if err != nil {
 		return err
 	}
+	externals, err := resolveExternals(cmd.Context(), rec, recipeDir)
+	if err != nil {
+		return err
+	}
+	comp, err := module.NewComposite(keel.BuiltinFS, externals)
+	if err != nil {
+		return err
+	}
+	names := rec.ModuleNames()
 
-	ans, err := collectAnswers(l, rec, preset, f.noInput)
+	ans, err := collectAnswers(comp, names, preset, f.noInput)
 	if err != nil {
 		return err
 	}
@@ -92,7 +102,7 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 	}
 
 	res, err := scaffold.Run(cmd.Context(), scaffold.Options{
-		Target: target, Recipe: rec.Name, ModuleNames: rec.Modules, Loader: l,
+		Target: target, Recipe: rec.Name, ModuleNames: names, Loader: comp,
 		Provider: p, Answers: ans, CreateRemote: createRemote, RemoteURL: f.remoteURL,
 		Overwrite: f.overwrite, DryRun: f.dryRun, KeelVersion: version,
 	})
@@ -105,8 +115,8 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 }
 
 // collectAnswers merges core + module questions and collects answers.
-func collectAnswers(l module.Loader, rec recipe.Recipe, preset answers.Answers, noInput bool) (answers.Answers, error) {
-	moduleQs, err := module.RecipeQuestions(l, rec.Modules)
+func collectAnswers(l module.Loader, names []string, preset answers.Answers, noInput bool) (answers.Answers, error) {
+	moduleQs, err := module.RecipeQuestions(l, names)
 	if err != nil {
 		return nil, err
 	}
@@ -159,4 +169,39 @@ func ownerOrEnv(modulePath string) string {
 		return v
 	}
 	return ownerFromModulePath(modulePath)
+}
+
+// loadRecipe loads a recipe by builtin name or from a file path. The returned
+// recipeDir is the base for resolving relative dir sources (empty for builtin).
+func loadRecipe(nameOrPath string) (recipe.Recipe, string, error) {
+	if isRecipeFile(nameOrPath) {
+		rec, err := recipe.LoadFile(nameOrPath)
+		return rec, filepath.Dir(nameOrPath), err
+	}
+	rec, err := recipe.Load(keel.BuiltinFS, nameOrPath)
+	return rec, "", err
+}
+
+func isRecipeFile(s string) bool {
+	if strings.HasSuffix(s, ".yaml") || strings.HasSuffix(s, ".yml") {
+		return true
+	}
+	info, err := os.Stat(s)
+	return err == nil && !info.IsDir()
+}
+
+// resolveExternals fetches/locates every source-bearing module ref.
+func resolveExternals(ctx context.Context, rec recipe.Recipe, recipeDir string) ([]module.External, error) {
+	var ext []module.External
+	for _, m := range rec.Modules {
+		if m.Source == nil {
+			continue
+		}
+		res, err := source.Resolve(ctx, *m.Source, recipeDir)
+		if err != nil {
+			return nil, fmt.Errorf("module %q: %w", m.Name, err)
+		}
+		ext = append(ext, module.External{Name: m.Name, FS: res.FS, Source: res.Source, Version: res.Version})
+	}
+	return ext, nil
 }

@@ -54,7 +54,9 @@ func renderFile(out map[string]string, m manifest.Manifest, tfs fs.FS, a answers
 		return fmt.Errorf("module %q: path %q: %w", m.Name, src, err)
 	}
 	dest := path.Join(destDir, rel)
-
+	if err := safeDest(dest); err != nil {
+		return fmt.Errorf("module %q: %w", m.Name, err)
+	}
 	raw, err := fs.ReadFile(tfs, src)
 	if err != nil {
 		return err
@@ -93,4 +95,13 @@ func evalWhen(cond string, a answers.Answers) (bool, error) {
 		return false, err
 	}
 	return strings.TrimSpace(s) == "true", nil
+}
+
+// safeDest rejects destinations that would write outside the target tree.
+func safeDest(dest string) error {
+	clean := path.Clean(dest)
+	if clean == "." || path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
+		return fmt.Errorf("unsafe destination %q escapes the target", dest)
+	}
+	return nil
 }
