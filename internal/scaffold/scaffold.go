@@ -231,9 +231,14 @@ func commitStep(ctx context.Context, repo *git.Repo, opts Options, manifests []m
 // writeLock writes .scaffold.lock recording what produced the repo, from the
 // already-resolved manifests (no second graph walk).
 func writeLock(opts Options, manifests []manifest.Manifest) error {
+	prov, hasProv := opts.Loader.(module.Provenancer)
 	lmods := make([]lock.Module, len(manifests))
 	for i, m := range manifests {
-		lmods[i] = lock.Module{Name: m.Name, Source: "builtin", Version: m.Version}
+		source, version := "builtin", m.Version
+		if hasProv {
+			source, version = prov.Provenance(m.Name)
+		}
+		lmods[i] = lock.Module{Name: m.Name, Source: source, Version: version}
 	}
 	return lock.Write(filepath.Join(opts.Target, ".scaffold.lock"), lock.Lock{
 		KeelVersion: opts.KeelVersion, Recipe: opts.Recipe, Modules: lmods, Answers: opts.Answers,

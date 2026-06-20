@@ -12,6 +12,7 @@ import (
 	"github.com/RomanAgaltsev/keel"
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/git"
+	"github.com/RomanAgaltsev/keel/internal/lock"
 	"github.com/RomanAgaltsev/keel/internal/module"
 	"github.com/RomanAgaltsev/keel/internal/provider"
 	"github.com/RomanAgaltsev/keel/internal/scaffold"
@@ -175,4 +176,39 @@ func localBare(t *testing.T) string {
 	_, err := r.Run(ctx, "clone", "--bare", work, bare)
 	require.NoError(t, err)
 	return bare
+}
+
+func TestRunRecordsExternalProvenance(t *testing.T) {
+	// External module on local disk.
+	ext := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(ext, "templates"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(ext, "module.yaml"),
+		[]byte("name: logging\nversion: 1.2.0\nlanguage: go\nfiles:\n  - src: \"*\"\n    dest: \".\"\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(ext, "templates", "log.go.tmpl"),
+		[]byte("package log\n"), 0o644))
+
+	comp, err := module.NewComposite(keel.BuiltinFS, []module.External{
+		{Name: "logging", FS: os.DirFS(ext), Source: "dir:./logging", Version: "1.2.0"},
+	})
+	require.NoError(t, err)
+
+	target := filepath.Join(t.TempDir(), "demo")
+	opts := baseOpts(target, nil)
+	opts.CreateRemote = false
+	opts.Loader = comp
+	opts.ModuleNames = []string{"base-layout", "go-mod", "logging"}
+
+	_, err = scaffold.Run(context.Background(), opts)
+	require.NoError(t, err)
+
+	require.FileExists(t, filepath.Join(target, "log.go"))
+	lk, err := lock.Read(filepath.Join(target, ".scaffold.lock"))
+	require.NoError(t, err)
+	var got map[string]string // name -> source
+	got = map[string]string{}
+	for _, m := range lk.Modules {
+		got[m.Name] = m.Source
+	}
+	require.Equal(t, "dir:./logging", got["logging"])
+	require.Equal(t, "builtin", got["base-layout"])
 }
