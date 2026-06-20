@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/RomanAgaltsev/keel/compare/v1.0.1...v1.1.0) (2026-06-20)
+
+
+### Features
+
+* version management ([#10](https://github.com/RomanAgaltsev/keel/issues/10)) ([6d5d567](https://github.com/RomanAgaltsev/keel/commit/6d5d56772d1ac91df9ad0a3a4c3d1bc42dc38869))
+
 ## [1.0.1](https://github.com/RomanAgaltsev/keel/compare/v1.0.0...v1.0.1) (2026-06-19)
 
 
