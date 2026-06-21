@@ -16,7 +16,7 @@ func TestModuleUpdates(t *testing.T) {
 	// "lint-go" is embedded at >= 1.0.0; pretend the repo locked an older version.
 	locked := []lock.Module{
 		{Name: "lint-go", Source: "builtin", Version: "0.9.0"},
-		{Name: "base-layout", Source: "builtin", Version: "1.0.0"}, // up to date (assuming embedded 1.0.0)
+		{Name: "base-layout", Source: "builtin", Version: "1.1.0"}, // up to date (assuming embedded 1.0.0)
 	}
 	ups, err := outdated.ModuleUpdates(l, locked)
 	require.NoError(t, err)

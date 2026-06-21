@@ -28,6 +28,8 @@ func TestLoaderLoadModule(t *testing.T) {
 		"release-go",
 		"dep-bots-go",
 		"spell",
+		"cargo-mod",
+		"taskfile-rust",
 	}, names)
 
 	_, err = l.Load("does-not-exist")

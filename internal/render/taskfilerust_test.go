@@ -15,7 +15,8 @@ import (
 func TestTaskfileRustRenders(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "taskfile-rust"}, answers.Answers{
-		"repo_name": "demo",
+		"repo_name":   "demo",
+		"description": "a demo service",
 	})
 	require.NoError(t, err)
 

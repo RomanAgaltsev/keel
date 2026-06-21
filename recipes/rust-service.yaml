@@ -1,0 +1,3 @@
+name: rust-service
+language: rust
+modules: [base-layout, cargo-mod, taskfile-rust, spell]
