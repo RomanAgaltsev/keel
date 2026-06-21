@@ -17,7 +17,7 @@ func TestSecurityCodeQLGated(t *testing.T) {
 		"repo_name": "x", "description": "d", "module_path": "github.com/x/x",
 		"enable_codeql": false, "enable_govulncheck": true,
 	}
-	plan, err := render.BuildRecipe(l, []string{"base-layout", "security"}, base)
+	plan, err := render.BuildRecipe(l, []string{"base-layout", "security-go"}, base)
 	require.NoError(t, err)
 	require.NotContains(t, plan.Files, ".github/workflows/codeql.yml")   // gated off
 	require.Contains(t, plan.Files, ".github/workflows/govulncheck.yml") // gated on
