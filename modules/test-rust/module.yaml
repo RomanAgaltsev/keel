@@ -1,0 +1,16 @@
+name: test-rust
+description: nextest test matrix with optional Codecov coverage
+version: 1.0.0
+language: rust
+requires: [base-layout]
+questions:
+  - id: enable_codecov
+    prompt: "Upload coverage to Codecov?"
+    type: bool
+    default: false
+files: # dest is always "." — src carries the subdir
+  - src: ".github/workflows/test.yml"
+    dest: "."
+  - src: ".github/workflows/coverage.yml"
+    dest: "."
+    when: "{{ .enable_codecov }}"
