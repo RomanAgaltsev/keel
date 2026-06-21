@@ -4,11 +4,11 @@ modules:
   [
     base-layout,
     go-mod,
-    taskfile,
-    lint,
-    test,
-    security,
-    dep-bots,
-    release,
+    taskfile-go,
+    lint-go,
+    test-go,
+    security-go,
+    dep-bots-go,
+    release-go,
     spell,
   ]

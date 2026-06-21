@@ -1,4 +1,4 @@
-name: release
+name: release-go
 description: release-please + GoReleaser release pipeline
 version: 1.0.0
 language: go

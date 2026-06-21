@@ -46,7 +46,7 @@ func TestCompositeLoadsExternalAndBuiltin(t *testing.T) {
 
 func TestCompositeCollisionWithBuiltin(t *testing.T) {
 	_, err := module.NewComposite(keel.BuiltinFS, []module.External{
-		{Name: "lint", FS: extFS("lint", "9.9.9"), Source: "dir:./x", Version: "9.9.9"},
+		{Name: "lint-go", FS: extFS("lint-go", "9.9.9"), Source: "dir:./x", Version: "9.9.9"},
 	})
 	require.ErrorContains(t, err, "collides")
 }

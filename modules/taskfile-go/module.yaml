@@ -1,4 +1,4 @@
-name: taskfile
+name: taskfile-go
 description: Taskfile with project-local bin/ tooling and a ci gate
 version: 1.0.0
 language: go

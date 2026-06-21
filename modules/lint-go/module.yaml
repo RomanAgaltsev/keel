@@ -1,4 +1,4 @@
-name: lint
+name: lint-go
 description: golangci-lint v2 config + lint workflow
 version: 1.0.1
 language: go

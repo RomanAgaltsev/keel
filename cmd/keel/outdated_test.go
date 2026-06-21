@@ -14,7 +14,7 @@ func TestOutdatedModulesOnly(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, lock.Write(filepath.Join(dir, ".scaffold.lock"), lock.Lock{
 		Recipe:  "go-service",
-		Modules: []lock.Module{{Name: "lint", Source: "builtin", Version: "0.9.0"}},
+		Modules: []lock.Module{{Name: "lint-go", Source: "builtin", Version: "0.9.0"}},
 	}))
 
 	cmd := newOutdatedCmd()
@@ -25,7 +25,7 @@ func TestOutdatedModulesOnly(t *testing.T) {
 
 	require.ErrorContains(t, err, "updates available") // non-zero exit signal
 	s := out.String()
-	require.Contains(t, s, "lint")
+	require.Contains(t, s, "lint-go")
 	require.Contains(t, s, "0.9.0")
 }
 
