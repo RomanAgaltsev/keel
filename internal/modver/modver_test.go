@@ -8,21 +8,21 @@ import (
 
 func TestModulesTouched(t *testing.T) {
 	got := ModulesTouched([]string{
-		"modules/lint/templates/.github/workflows/lint.yml",
-		"modules/lint/module.yaml",
-		"modules/security/templates/x.yml",
+		"modules/lint-go/templates/.github/workflows/lint.yml",
+		"modules/lint-go/module.yaml",
+		"modules/security-go/templates/x.yml",
 		"internal/render/render.go", // ignored
 		"README.md",                 // ignored
 	})
-	require.Equal(t, []string{"lint", "security"}, got)
+	require.Equal(t, []string{"lint-go", "security-go"}, got)
 }
 
 func TestOffenders(t *testing.T) {
-	touched := []string{"lint", "security", "newmod"}
-	old := map[string]string{"lint": "1.0.0", "security": "1.2.0"} // newmod absent => new
-	new := map[string]string{"lint": "1.0.0", "security": "1.2.1", "newmod": "1.0.0"}
+	touched := []string{"lint-go", "security-go", "newmod"}
+	old := map[string]string{"lint-go": "1.0.0", "security-go": "1.2.0"} // newmod absent => new
+	new := map[string]string{"lint-go": "1.0.0", "security-go": "1.2.1", "newmod": "1.0.0"}
 	// lint unchanged => offender; security bumped => ok; newmod new => ok.
-	require.Equal(t, []string{"lint"}, Offenders(touched, old, new))
+	require.Equal(t, []string{"lint-go"}, Offenders(touched, old, new))
 }
 
 func TestBump(t *testing.T) {

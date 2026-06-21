@@ -31,13 +31,13 @@ func TestRunDetectsMissingBump(t *testing.T) {
 	git(t, dir, "init", "-b", "main")
 	git(t, dir, "config", "user.email", "t@t")
 	git(t, dir, "config", "user.name", "t")
-	writeModule(t, dir, "lint", "1.0.0")
+	writeModule(t, dir, "lint-go", "1.0.0")
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-m", "base")
 	git(t, dir, "checkout", "-b", "feature")
 
 	// Change a template file but NOT the version.
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "modules", "lint", "x.txt"), []byte("y"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "modules", "lint-go", "x.txt"), []byte("y"), 0o644))
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-m", "change without bump")
 
@@ -45,7 +45,7 @@ func TestRunDetectsMissingBump(t *testing.T) {
 	require.Error(t, run("main"), "should fail: lint changed without a bump")
 
 	// Now bump the version → passes.
-	writeModule(t, dir, "lint", "1.0.1")
+	writeModule(t, dir, "lint-go", "1.0.1")
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-m", "bump")
 	require.NoError(t, run("main"))

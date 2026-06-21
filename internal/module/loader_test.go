@@ -21,12 +21,12 @@ func TestLoaderLoadModule(t *testing.T) {
 	require.ElementsMatch(t, []string{
 		"base-layout",
 		"go-mod",
-		"taskfile",
-		"lint",
-		"test",
-		"security",
-		"release",
-		"dep-bots",
+		"taskfile-go",
+		"lint-go",
+		"test-go",
+		"security-go",
+		"release-go",
+		"dep-bots-go",
 		"spell",
 	}, names)
 

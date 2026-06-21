@@ -13,9 +13,9 @@ import (
 
 func TestModuleUpdates(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
-	// "lint" is embedded at >= 1.0.0; pretend the repo locked an older version.
+	// "lint-go" is embedded at >= 1.0.0; pretend the repo locked an older version.
 	locked := []lock.Module{
-		{Name: "lint", Source: "builtin", Version: "0.9.0"},
+		{Name: "lint-go", Source: "builtin", Version: "0.9.0"},
 		{Name: "base-layout", Source: "builtin", Version: "1.0.0"}, // up to date (assuming embedded 1.0.0)
 	}
 	ups, err := outdated.ModuleUpdates(l, locked)
@@ -25,8 +25,8 @@ func TestModuleUpdates(t *testing.T) {
 	for _, u := range ups {
 		names[u.Name] = u
 	}
-	require.Contains(t, names, "lint")
-	require.Equal(t, "0.9.0", names["lint"].Current)
+	require.Contains(t, names, "lint-go")
+	require.Equal(t, "0.9.0", names["lint-go"].Current)
 	require.NotContains(t, names, "base-layout") // not behind
 }
 
