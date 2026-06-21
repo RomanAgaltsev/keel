@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/RomanAgaltsev/keel/compare/v1.3.1...v1.4.0) (2026-06-21)
+
+
+### Features
+
+* modules rename ([#18](https://github.com/RomanAgaltsev/keel/issues/18)) ([8596124](https://github.com/RomanAgaltsev/keel/commit/85961240f20dc1e6fd3db624f5f11013b9b41fbc))
+
 ## [1.3.1](https://github.com/RomanAgaltsev/keel/compare/v1.3.0...v1.3.1) (2026-06-20)
 
 
