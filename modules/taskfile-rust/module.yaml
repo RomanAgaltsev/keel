@@ -1,0 +1,8 @@
+name: taskfile-rust
+description: Taskfile with project-local bin/ tooling and a ci gate (Rust)
+version: 1.0.0
+language: rust
+requires: [base-layout]
+files:
+  - src: "*"
+    dest: "."
