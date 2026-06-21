@@ -1,4 +1,4 @@
-name: security
+name: security-go
 description: CodeQL, govulncheck, dependency-review, workflow linting
 version: 1.0.0
 language: go

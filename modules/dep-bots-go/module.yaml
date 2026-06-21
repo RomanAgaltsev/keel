@@ -1,4 +1,4 @@
-name: dep-bots
+name: dep-bots-go
 description: Dependabot or Renovate dependency-update config
 version: 1.0.1
 language: go

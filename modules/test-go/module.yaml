@@ -1,4 +1,4 @@
-name: test
+name: test-go
 description: race/shuffle test workflow with coverage
 version: 1.0.0
 language: go
