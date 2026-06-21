@@ -24,12 +24,14 @@ func TestNewWithExternalDirModule(t *testing.T) {
 	// Recipe file referencing builtin + the dir module.
 	recPath := filepath.Join(work, "recipe.yaml")
 	require.NoError(t, os.WriteFile(recPath, []byte(
-		"name: ext-demo\nlanguage: go\nmodules:\n  - base-layout\n  - go-mod\n  - name: logging\n    source: { dir: ./mods/logging }\n"), 0o644))
+		"name: ext-demo\nlanguage: go\nmodules:\n  - base-layout\n  - go-mod\n  - name: logging\n    source: { dir: ./mods/logging }\n",
+	), 0o644))
 
 	// Answers file (non-interactive).
 	ansPath := filepath.Join(work, "answers.yaml")
 	require.NoError(t, os.WriteFile(ansPath, []byte(
-		"repo_name: demo\ndescription: d\nmodule_path: github.com/x/demo\nauthor_name: R\nauthor_email: r@x.io\nlicense: MIT\nvisibility: public\nprovider: none\ncreate_remote: false\n"), 0o644))
+		"repo_name: demo\ndescription: d\nmodule_path: github.com/x/demo\nauthor_name: R\nauthor_email: r@x.io\nlicense: MIT\nvisibility: public\nprovider: none\ncreate_remote: false\n",
+	), 0o644))
 
 	target := filepath.Join(work, "out")
 	cmd := newRootCmd()

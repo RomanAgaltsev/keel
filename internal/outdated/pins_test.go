@@ -15,7 +15,8 @@ func TestParsePins(t *testing.T) {
 				"  - uses: docker://rhysd/actionlint:1.7.7\n" + // deferred — ignored
 				"  - uses: ./local-action\n" + // local — ignored
 				"    with:\n" +
-				"      version: v2.3.0 # golangci-lint\n"),
+				"      version: v2.3.0 # golangci-lint\n",
+		),
 		"Taskfile.yml": []byte("vars:\n  GOLANGCI_VERSION: v2.3.0\n"),
 	}
 	pins := ParsePins(files)
