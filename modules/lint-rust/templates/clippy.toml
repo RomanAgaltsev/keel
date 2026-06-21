@@ -1,0 +1,2 @@
+# clippy configuration — https://doc.rust-lang.org/clippy/configuration.html
+# (intentionally minimal; add lint thresholds/MSRV here as the project grows)
