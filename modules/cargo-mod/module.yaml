@@ -1,0 +1,10 @@
+name: cargo-mod
+description: Minimal Rust crate (Cargo.toml + entrypoint)
+version: 1.0.0
+language: rust
+requires: [base-layout]
+files: # dest is always "." — src carries the subdir
+  - src: "Cargo.toml.tmpl"
+    dest: "."
+  - src: "src/main.rs.tmpl"
+    dest: "."

@@ -1,0 +1,10 @@
+name: release-rust
+description: release-plz (version/changelog) + cargo-dist (binaries)
+version: 1.0.0
+language: rust
+requires: [base-layout]
+files: # dest is always "." — src carries the subdir
+  - src: ".github/workflows/release-plz.yml"
+    dest: "."
+  - src: "release-plz.toml"
+    dest: "."

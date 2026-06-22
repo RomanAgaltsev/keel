@@ -1,0 +1,38 @@
+version: "3"
+
+vars:
+  BIN: "{{.ROOT_DIR}}/bin"
+  NEXTEST_VERSION: 0.9.78
+  CARGO_AUDIT_VERSION: 0.21.1
+  CARGO_DENY_VERSION: 0.16.1
+  LLVM_COV_VERSION: 0.6.13
+
+tasks:
+  default:
+    cmds: [task --list]
+    silent: true
+  tools:
+    desc: Install pinned dev tools into ./bin
+    cmds:
+      - cargo install --root . --version {{.NEXTEST_VERSION}} cargo-nextest
+      - cargo install --root . --version {{.CARGO_AUDIT_VERSION}} cargo-audit
+      - cargo install --root . --version {{.CARGO_DENY_VERSION}} cargo-deny
+      - cargo install --root . --version {{.LLVM_COV_VERSION}} cargo-llvm-cov
+  fmt:
+    cmds: ["cargo fmt --all"]
+  fmt:check:
+    cmds: ["cargo fmt --all -- --check"]
+  lint:
+    cmds: ["cargo clippy --all-targets --all-features -- -D warnings"]
+  test:
+    cmds:
+      - "{{.BIN}}/cargo nextest run"
+      - "cargo test --doc"
+  build:
+    cmds: ["cargo build --release"]
+  ci:
+    desc: full local gate
+    cmds:
+      - task: fmt:check
+      - task: lint
+      - task: test

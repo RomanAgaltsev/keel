@@ -1,0 +1,28 @@
+name: security-rust
+description: cargo-audit + cargo-deny, dependency-review, workflow linting
+version: 1.0.0
+language: rust
+requires: [base-layout]
+questions:
+  - id: enable_cargo_audit
+    prompt: "Enable cargo-audit (RUSTSEC advisories)?"
+    type: bool
+    default: true
+  - id: enable_cargo_deny
+    prompt: "Enable cargo-deny (licenses/bans/sources)?"
+    type: bool
+    default: true
+files: # dest is always "." — src carries the subdir
+  - src: ".github/workflows/cargo-audit.yml"
+    dest: "."
+    when: "{{ .enable_cargo_audit }}"
+  - src: ".github/workflows/cargo-deny.yml"
+    dest: "."
+    when: "{{ .enable_cargo_deny }}"
+  - src: "deny.toml"
+    dest: "."
+    when: "{{ .enable_cargo_deny }}"
+  - src: ".github/workflows/dependency-review.yml"
+    dest: "."
+  - src: ".github/workflows/actionlint.yml"
+    dest: "."

@@ -1,0 +1,9 @@
+[package]
+name = "demo"
+version = "0.1.0"
+edition = "2024"
+description = "a demo service"
+authors = ["Roman Agaltsev <roman-agalcev@yandex.ru>"]
+license = "MIT"
+
+[dependencies]

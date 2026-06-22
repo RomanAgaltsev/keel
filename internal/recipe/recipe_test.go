@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/RomanAgaltsev/keel"
 )
 
 func TestParseRecipeBuiltinAndExternal(t *testing.T) {
@@ -71,5 +73,19 @@ func TestLoadFile(t *testing.T) {
 	require.Equal(t, []string{"base-layout"}, r.ModuleNames())
 
 	_, err = LoadFile(filepath.Join(dir, "nope.yaml"))
+	require.Error(t, err)
+}
+
+func TestLoadBuiltin(t *testing.T) {
+	for _, name := range []string{"go-service", "rust-service"} {
+		t.Run(name, func(t *testing.T) {
+			r, err := Load(keel.BuiltinFS, name)
+			require.NoError(t, err)
+			require.Equal(t, name, r.Name)
+			require.Contains(t, r.ModuleNames(), "base-layout")
+		})
+	}
+
+	_, err := Load(keel.BuiltinFS, "does-not-exist")
 	require.Error(t, err)
 }

@@ -1,0 +1,12 @@
+name: lint-rust
+description: rustfmt + clippy config and lint workflow
+version: 1.0.0
+language: rust
+requires: [base-layout]
+files: # dest is always "." — src carries the subdir
+  - src: "rustfmt.toml"
+    dest: "."
+  - src: "clippy.toml"
+    dest: "."
+  - src: ".github/workflows/lint.yml"
+    dest: "."

@@ -1,0 +1,14 @@
+name: rust-service
+language: rust
+modules:
+  [
+    base-layout,
+    cargo-mod,
+    taskfile-rust,
+    lint-rust,
+    test-rust,
+    security-rust,
+    release-rust,
+    dep-bots-rust,
+    spell,
+  ]

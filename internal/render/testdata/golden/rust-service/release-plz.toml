@@ -1,0 +1,4 @@
+# release-plz configuration — https://release-plz.dev/docs/config
+# Defaults are sensible; this file is a discoverable place to customize
+# changelog/version/publish behavior.
+[workspace]

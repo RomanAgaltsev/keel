@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -39,4 +40,32 @@ func TestOutdatedModulesOnlyClean(t *testing.T) {
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"--path", dir, "--modules-only"})
 	require.NoError(t, cmd.Execute()) // nothing outdated → no error
+}
+
+func TestReadPinFiles(t *testing.T) {
+	dir := t.TempDir()
+	wfDir := filepath.Join(dir, ".github", "workflows")
+	require.NoError(t, os.MkdirAll(wfDir, 0o750))
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Taskfile.yml"), []byte("version: '3'\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(wfDir, "ci.yml"), []byte("name: ci\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(wfDir, "release.yaml"), []byte("name: release\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(wfDir, "notes.txt"), []byte("ignored\n"), 0o644)) // non-yaml skipped
+	require.NoError(t, os.MkdirAll(filepath.Join(wfDir, "sub"), 0o750))                             // dir skipped
+
+	files, err := readPinFiles(dir)
+	require.NoError(t, err)
+
+	require.Contains(t, files, "Taskfile.yml")
+	require.Contains(t, files, ".github/workflows/ci.yml")
+	require.Contains(t, files, ".github/workflows/release.yaml")
+	require.NotContains(t, files, ".github/workflows/notes.txt")
+	require.Len(t, files, 3)
+}
+
+func TestReadPinFilesNoWorkflows(t *testing.T) {
+	dir := t.TempDir() // no Taskfile, no .github/workflows
+	files, err := readPinFiles(dir)
+	require.NoError(t, err)
+	require.Empty(t, files)
 }
