@@ -40,6 +40,35 @@ func TestInitCommitAndIsRepo(t *testing.T) {
 	require.True(t, dirty)
 }
 
+func TestAddRemoteAndPush(t *testing.T) {
+	ctx := context.Background()
+
+	// A local bare repo stands in for the remote — no network needed.
+	bare := filepath.Join(t.TempDir(), "origin.git")
+	require.NoError(t, os.MkdirAll(bare, 0o750))
+	_, err := git.New(bare).Run(ctx, "init", "--bare", "-b", "main")
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	r := git.New(dir)
+	require.Equal(t, dir, r.Dir()) // Dir reports the working-tree path
+
+	require.NoError(t, r.Init(ctx, "main"))
+	require.NoError(t, r.SetIdentity(ctx, "Roman Agaltsev", "roman-agalcev@yandex.ru"))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "f.txt"), []byte("hi"), 0o644))
+	require.NoError(t, r.AddAll(ctx))
+	require.NoError(t, r.Commit(ctx, "initial commit"))
+
+	require.NoError(t, r.AddRemote(ctx, "origin", bare))
+	require.NoError(t, r.AddRemote(ctx, "origin", bare)) // re-add exercises the set-url fallback
+	require.NoError(t, r.Push(ctx, "origin", "main"))
+
+	// The push reached the remote: it now advertises refs/heads/main.
+	out, err := r.Run(ctx, "ls-remote", "origin")
+	require.NoError(t, err)
+	require.Contains(t, out, "refs/heads/main")
+}
+
 func TestCloneFromLocalBare(t *testing.T) {
 	ctx := context.Background()
 	// Build a source bare repo with one commit.

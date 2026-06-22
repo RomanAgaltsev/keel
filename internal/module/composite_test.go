@@ -1,6 +1,7 @@
 package module_test
 
 import (
+	"sort"
 	"testing"
 	"testing/fstest"
 
@@ -42,6 +43,20 @@ func TestCompositeLoadsExternalAndBuiltin(t *testing.T) {
 	require.Equal(t, "1.2.0", ver)
 	src, _ = c.Provenance("base-layout")
 	require.Equal(t, "builtin", src)
+}
+
+func TestCompositeModuleNames(t *testing.T) {
+	c, err := module.NewComposite(keel.BuiltinFS, []module.External{
+		{Name: "logging", FS: extFS("logging", "1.0.0"), Source: "dir:./mods/logging", Version: "1.0.0"},
+	})
+	require.NoError(t, err)
+
+	names, err := c.ModuleNames()
+	require.NoError(t, err)
+
+	require.Contains(t, names, "logging")     // external is included
+	require.Contains(t, names, "base-layout") // builtin is included
+	require.True(t, sort.StringsAreSorted(names), "ModuleNames must be sorted")
 }
 
 func TestCompositeCollisionWithBuiltin(t *testing.T) {

@@ -40,3 +40,29 @@ func TestLoaderLoadModule(t *testing.T) {
 	_, err = l.Load("does-not-exist")
 	require.Error(t, err)
 }
+
+func TestLoaderTemplateFS(t *testing.T) {
+	l := module.NewFSLoader(keel.BuiltinFS)
+
+	tfs, err := l.TemplateFS("base-layout")
+	require.NoError(t, err)
+	f, err := tfs.Open("README.md.tmpl")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+}
+
+func TestRecipeQuestions(t *testing.T) {
+	l := module.NewFSLoader(keel.BuiltinFS)
+
+	qs, err := module.RecipeQuestions(l, []string{"security-go"})
+	require.NoError(t, err)
+
+	ids := make([]string, len(qs))
+	for i, q := range qs {
+		ids[i] = q.ID
+	}
+	require.Contains(t, ids, "enable_codeql") // security-go contributes its own questions
+
+	_, err = module.RecipeQuestions(l, []string{"does-not-exist"})
+	require.Error(t, err)
+}
