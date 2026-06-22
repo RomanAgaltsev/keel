@@ -98,10 +98,7 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 	var p provider.Provider
 	if createRemote && f.remoteURL == "" {
 		var err error
-		p, err = provider.For(providerName, provider.Env{
-			Token: firstEnv("KEEL_GITHUB_TOKEN", "GITHUB_TOKEN"),
-			Owner: ownerOrEnv(ans.String("module_path")),
-		})
+		p, err = provider.Resolve(providerName, ans.String("module_path"))
 		if err != nil {
 			return err
 		}
@@ -196,25 +193,6 @@ func firstEnv(keys ...string) string {
 		}
 	}
 	return ""
-}
-
-// ownerFromModulePath extracts the owner from a module path like
-// "github.com/Owner/repo" → "Owner". Empty if it can't be determined.
-func ownerFromModulePath(mp string) string {
-	parts := strings.Split(mp, "/")
-	if len(parts) >= 3 {
-		return parts[1]
-	}
-	return ""
-}
-
-// ownerOrEnv prefers an explicit $KEEL_GITHUB_OWNER, else derives the owner
-// from the module path.
-func ownerOrEnv(modulePath string) string {
-	if v := firstEnv("KEEL_GITHUB_OWNER"); v != "" {
-		return v
-	}
-	return ownerFromModulePath(modulePath)
 }
 
 // loadRecipe loads a recipe by builtin name or from a file path. The returned
