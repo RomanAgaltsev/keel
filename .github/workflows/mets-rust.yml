@@ -1,0 +1,45 @@
+name: meta-rust
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+permissions:
+  contents: read
+jobs:
+  scaffold-and-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: scaffold a rust-service
+        run: |
+          go build -o bin/keel ./cmd/keel
+          cat > /tmp/ans.yaml <<'EOF'
+          repo_name: metarust
+          description: meta rust scaffold
+          module_path: github.com/RomanAgaltsev/metarust
+          author_name: Roman Agaltsev
+          author_email: roman-agalcev@yandex.ru
+          license: MIT
+          visibility: public
+          provider: none
+          create_remote: false
+          enable_codecov: false
+          enable_cargo_audit: true
+          enable_cargo_deny: true
+          dep_bot: renovate
+          EOF
+          ./bin/keel new --no-input --recipe rust-service --answers /tmp/ans.yaml --target /tmp/metarust
+      - name: run the scaffolded repo's checks
+        working-directory: /tmp/metarust
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo nextest run --all-features || cargo test
