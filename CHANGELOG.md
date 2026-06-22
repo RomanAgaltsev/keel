@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/RomanAgaltsev/keel/compare/v1.4.0...v1.5.0) (2026-06-22)
+
+
+### Features
+
+* add rust support ([#20](https://github.com/RomanAgaltsev/keel/issues/20)) ([8e8b275](https://github.com/RomanAgaltsev/keel/commit/8e8b275759cbc5161f17bcf2277aa8a9b555fb09))
+
 ## [1.4.0](https://github.com/RomanAgaltsev/keel/compare/v1.3.1...v1.4.0) (2026-06-21)
 
 
