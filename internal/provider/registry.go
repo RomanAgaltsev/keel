@@ -7,8 +7,9 @@ import (
 
 // Env carries the runtime credentials/identity a provider needs.
 type Env struct {
-	Token string
-	Owner string
+	Token   string
+	Owner   string
+	BaseURL string // optional; empty ⇒ the provider's default endpoint
 }
 
 // For returns a Provider for the named host. "none" yields (nil, nil).
@@ -23,7 +24,11 @@ func For(name string, env Env) (Provider, error) {
 		if env.Owner == "" {
 			return nil, errors.New("provider github requires an owner (derived from the module path, or set $KEEL_GITHUB_OWNER)")
 		}
-		return NewGitHub(env.Token, env.Owner), nil
+		var opts []Option
+		if env.BaseURL != "" {
+			opts = append(opts, WithBaseURL(env.BaseURL))
+		}
+		return NewGitHub(env.Token, env.Owner, opts...), nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q", name)
 	}
