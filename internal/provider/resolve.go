@@ -21,6 +21,11 @@ var envSpecs = map[string]EnvSpec{
 		OwnerVar:  "KEEL_GITHUB_OWNER",
 		URLVar:    "KEEL_GITHUB_URL",
 	},
+	"gitlab": {
+		TokenVars: []string{"KEEL_GITLAB_TOKEN", "GITLAB_TOKEN"},
+		OwnerVar:  "KEEL_GITLAB_OWNER",
+		URLVar:    "KEEL_GITLAB_URL",
+	},
 }
 
 // Resolve constructs a provider by name, reading its token / owner / base-URL from

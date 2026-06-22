@@ -29,6 +29,18 @@ func For(name string, env Env) (Provider, error) {
 			opts = append(opts, WithBaseURL(env.BaseURL))
 		}
 		return NewGitHub(env.Token, env.Owner, opts...), nil
+	case "gitlab":
+		if env.Token == "" {
+			return nil, errors.New("provider gitlab requires a token in $KEEL_GITLAB_TOKEN (or $GITLAB_TOKEN)")
+		}
+		if env.Owner == "" {
+			return nil, errors.New("provider gitlab requires an owner (derived from the module path, or set $KEEL_GITLAB_OWNER)")
+		}
+		var opts []GitLabOption
+		if env.BaseURL != "" {
+			opts = append(opts, WithGitLabBaseURL(env.BaseURL))
+		}
+		return NewGitLab(env.Token, env.Owner, opts...), nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q", name)
 	}

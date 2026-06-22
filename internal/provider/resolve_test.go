@@ -41,3 +41,10 @@ func TestResolveOwnerOverride(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "github", p.Name())
 }
+
+func TestResolveGitLab(t *testing.T) {
+	t.Setenv("KEEL_GITLAB_TOKEN", "tok")
+	p, err := provider.Resolve("gitlab", "gitlab.com/mygroup/demo")
+	require.NoError(t, err)
+	require.Equal(t, "gitlab", p.Name())
+}
