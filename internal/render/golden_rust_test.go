@@ -20,14 +20,18 @@ func TestRustServiceGolden(t *testing.T) {
 	require.NoError(t, err)
 
 	plan, err := render.BuildRecipe(l, rec.ModuleNames(), answers.Answers{
-		"repo_name":      "demo",
-		"description":    "a demo service",
-		"module_path":    "github.com/RomanAgaltsev/demo",
-		"author_name":    "Roman Agaltsev",
-		"author_email":   "roman-agalcev@yandex.ru",
-		"license":        "MIT",
-		"enable_codecov": false,
+		"repo_name":          "demo",
+		"description":        "a demo service",
+		"module_path":        "github.com/RomanAgaltsev/demo",
+		"author_name":        "Roman Agaltsev",
+		"author_email":       "roman-agalcev@yandex.ru",
+		"license":            "MIT",
+		"enable_codecov":     false,
+		"enable_cargo_audit": true,
+		"enable_cargo_deny":  true,
+		"dep_bot":            "dependabot",
 	})
+
 	require.NoError(t, err)
 
 	goldenDir := filepath.Join("testdata", "golden", "rust-service")

@@ -1,0 +1,16 @@
+name: cargo-audit
+on:
+  push: { branches: [main] }
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 1"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
