@@ -97,7 +97,6 @@ func (g *GitHub) CreateRepo(ctx context.Context, spec RepoSpec) (RemoteRepo, err
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
 		return RemoteRepo{}, apiError("github: create "+spec.Name, resp, http.StatusUnprocessableEntity, "already exists")
-
 	}
 	var r ghRepo
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
