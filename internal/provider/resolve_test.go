@@ -48,3 +48,10 @@ func TestResolveGitLab(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "gitlab", p.Name())
 }
+
+func TestResolveBitbucket(t *testing.T) {
+	t.Setenv("KEEL_BITBUCKET_TOKEN", "tok")
+	p, err := provider.Resolve("bitbucket", "bitbucket.org/myws/demo")
+	require.NoError(t, err)
+	require.Equal(t, "bitbucket", p.Name())
+}

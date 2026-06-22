@@ -41,6 +41,19 @@ func For(name string, env Env) (Provider, error) {
 			opts = append(opts, WithGitLabBaseURL(env.BaseURL))
 		}
 		return NewGitLab(env.Token, env.Owner, opts...), nil
+	case "bitbucket":
+		if env.Token == "" {
+			return nil, errors.New("provider bitbucket requires an access token in $KEEL_BITBUCKET_TOKEN (or $BITBUCKET_TOKEN)")
+		}
+		if env.Owner == "" {
+			return nil, errors.New("provider bitbucket requires a workspace (derived from the module path, or set $KEEL_BITBUCKET_OWNER)")
+		}
+		var opts []BitbucketOption
+		if env.BaseURL != "" {
+			opts = append(opts, WithBitbucketBaseURL(env.BaseURL))
+		}
+		return NewBitbucket(env.Token, env.Owner, opts...), nil
+
 	default:
 		return nil, fmt.Errorf("unknown provider %q", name)
 	}
