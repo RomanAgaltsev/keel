@@ -1,0 +1,18 @@
+name: dep-bots-rust
+description: Dependabot or Renovate dependency-update config (Rust)
+version: 1.0.0
+language: rust
+requires: [base-layout]
+questions:
+  - id: dep_bot
+    prompt: "Dependency update bot"
+    type: select
+    options: [dependabot, renovate, none]
+    default: renovate
+files: # dest is always "." — src carries the subdir
+  - src: ".github/dependabot.yml"
+    dest: "."
+    when: '{{ eq .dep_bot "dependabot" }}'
+  - src: "renovate.json5"
+    dest: "."
+    when: '{{ eq .dep_bot "renovate" }}'

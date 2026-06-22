@@ -1,0 +1,11 @@
+# NOTE: Dependabot updates Cargo dependencies and GitHub Actions, but it does NOT
+# track the dev-tool versions pinned as strings in Taskfile.yml (NEXTEST_VERSION,
+# CARGO_AUDIT_VERSION, ...). To check those, run `keel outdated`.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
