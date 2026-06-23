@@ -211,3 +211,25 @@ func TestRunRecordsExternalProvenance(t *testing.T) {
 	require.Equal(t, "dir:./logging", got["logging"])
 	require.Equal(t, "builtin", got["base-layout"])
 }
+
+func TestScaffoldRecordsFileHashes(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "demo")
+	res, err := scaffold.Run(context.Background(), baseOpts(target, nil))
+	require.NoError(t, err)
+	require.False(t, res.DryRun)
+
+	lk, err := lock.Read(filepath.Join(target, ".scaffold.lock"))
+	require.NoError(t, err)
+	require.Equal(t, 2, lk.LockVersion)
+
+	// Every module records at least one file, and each recorded hash matches the
+	// on-disk content of the file it names.
+	for _, m := range lk.Modules {
+		require.NotEmpty(t, m.Files, "module %q recorded no files", m.Name)
+		for _, f := range m.Files {
+			b, rerr := os.ReadFile(filepath.Join(target, filepath.FromSlash(f.Path)))
+			require.NoError(t, rerr)
+			require.Equal(t, lock.HashBytes(b), f.SHA256, "hash mismatch for %s", f.Path)
+		}
+	}
+}

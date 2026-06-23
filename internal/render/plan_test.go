@@ -44,3 +44,23 @@ func TestBuildPlanMerges(t *testing.T) {
 	require.Equal(t, "A", plan.Files["a"])
 	require.Equal(t, "B", plan.Files["b"])
 }
+
+func TestPlanOwnerMapsDestToModule(t *testing.T) {
+	mods := []moduleFS{
+		{
+			Manifest: manifest.Manifest{Name: "base", Files: []manifest.FileRule{{Src: "*", Dest: "."}}},
+			FS: fstest.MapFS{
+				"README.md.tmpl": &fstest.MapFile{Data: []byte("hi")},
+			},
+		},
+	}
+	// renderModule writes README.md (the .tmpl suffix is stripped).
+	p, err := BuildPlan(mods, answers.Answers{})
+
+	require.NoError(t, err)
+	require.Equal(t, "base", p.Owner()["README.md"])
+
+	// Owner is a copy: mutating it doesn't change the plan.
+	p.Owner()["README.md"] = "tampered"
+	require.Equal(t, "base", p.Owner()["README.md"])
+}

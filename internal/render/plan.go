@@ -22,6 +22,16 @@ type Plan struct {
 	owner map[string]string // dest -> module name, for collision messages
 }
 
+// Owner returns a copy of the dest → module-name map, so callers can group a
+// plan's files by the module that produced each one without mutating the plan.
+func (p Plan) Owner() map[string]string {
+	out := make(map[string]string, len(p.owner))
+	for dest, mod := range p.owner {
+		out[dest] = mod
+	}
+	return out
+}
+
 // BuildPlan renders every module in order and merges the results, failing fast
 // on any cross-module destination collision.
 func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
