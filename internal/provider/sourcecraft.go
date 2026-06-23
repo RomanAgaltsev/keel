@@ -77,23 +77,11 @@ func (r scRepo) remote() RemoteRepo {
 func (s *SourceCraft) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRepo, error) {
 	// Task 1: single-repo GET path is /repos/{org_slug}/{repo_slug} (no /orgs prefix).
 	endpoint := fmt.Sprintf("%s/repos/%s/%s", s.baseURL, s.owner, spec.Name)
-	resp, err := s.do(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return false, RemoteRepo{}, fmt.Errorf("sourcecraft: check %s/%s: %w", s.owner, spec.Name, err)
-	}
-	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusOK:
-		var r scRepo
-		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-			return false, RemoteRepo{}, err
-		}
-		return true, r.remote(), nil
-	case http.StatusNotFound:
-		return false, RemoteRepo{}, nil
-	default:
-		return false, RemoteRepo{}, apiError(fmt.Sprintf("sourcecraft: check %s/%s", s.owner, spec.Name), resp, http.StatusConflict, "already exists") // Task 1: conflict status/body undocumented; verify live (Task 4)
-	}
+	label := fmt.Sprintf("sourcecraft: check %s/%s", s.owner, spec.Name)
+	// Task 1: conflict status/body undocumented; verify live (Task 4).
+	return checkRepo[scRepo](label, func() (*http.Response, error) {
+		return s.do(ctx, http.MethodGet, endpoint, nil)
+	}, http.StatusConflict, "already exists")
 }
 
 // CreateRepo creates org/name.

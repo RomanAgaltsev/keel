@@ -80,23 +80,10 @@ func (r bbRepo) remote() RemoteRepo {
 // RepoExists reports whether workspace/name exists.
 func (b *Bitbucket) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRepo, error) {
 	endpoint := fmt.Sprintf("%s/repositories/%s/%s", b.baseURL, b.owner, spec.Name)
-	resp, err := b.do(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return false, RemoteRepo{}, fmt.Errorf("bitbucket: check %s/%s: %w", b.owner, spec.Name, err)
-	}
-	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusOK:
-		var r bbRepo
-		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-			return false, RemoteRepo{}, err
-		}
-		return true, r.remote(), nil
-	case http.StatusNotFound:
-		return false, RemoteRepo{}, nil
-	default:
-		return false, RemoteRepo{}, apiError(fmt.Sprintf("bitbucket: check %s/%s", b.owner, spec.Name), resp, http.StatusBadRequest, "already exists")
-	}
+	label := fmt.Sprintf("bitbucket: check %s/%s", b.owner, spec.Name)
+	return checkRepo[bbRepo](label, func() (*http.Response, error) {
+		return b.do(ctx, http.MethodGet, endpoint, nil)
+	}, http.StatusBadRequest, "already exists")
 }
 
 // CreateRepo creates workspace/name.

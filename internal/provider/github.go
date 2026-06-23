@@ -62,23 +62,10 @@ func (g *GitHub) do(ctx context.Context, method, url string, body io.Reader) (*h
 // RepoExists reports whether owner/name exists.
 func (g *GitHub) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRepo, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s", g.baseURL, g.owner, spec.Name)
-	resp, err := g.do(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return false, RemoteRepo{}, fmt.Errorf("github: check %s/%s: %w", g.owner, spec.Name, err)
-	}
-	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusOK:
-		var r ghRepo
-		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-			return false, RemoteRepo{}, err
-		}
-		return true, RemoteRepo(r), nil
-	case http.StatusNotFound:
-		return false, RemoteRepo{}, nil
-	default:
-		return false, RemoteRepo{}, apiError(fmt.Sprintf("github: check %s/%s", g.owner, spec.Name), resp, http.StatusUnprocessableEntity, "already exists")
-	}
+	label := fmt.Sprintf("github: check %s/%s", g.owner, spec.Name)
+	return checkRepo[ghRepo](label, func() (*http.Response, error) {
+		return g.do(ctx, http.MethodGet, url, nil)
+	}, http.StatusUnprocessableEntity, "already exists")
 }
 
 // CreateRepo creates owner/name under the authenticated user.
@@ -102,10 +89,12 @@ func (g *GitHub) CreateRepo(ctx context.Context, spec RepoSpec) (RemoteRepo, err
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return RemoteRepo{}, err
 	}
-	return RemoteRepo(r), nil
+	return r.remote(), nil
 }
 
 type ghRepo struct {
 	CloneURL string `json:"clone_url"`
 	HTMLURL  string `json:"html_url"`
 }
+
+func (r ghRepo) remote() RemoteRepo { return RemoteRepo(r) }

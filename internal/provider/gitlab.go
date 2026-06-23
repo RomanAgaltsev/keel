@@ -67,23 +67,10 @@ func (p glProject) remote() RemoteRepo {
 func (g *GitLab) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRepo, error) {
 	encoded := url.PathEscape(g.owner + "/" + spec.Name)
 	endpoint := fmt.Sprintf("%s/projects/%s", g.baseURL, encoded)
-	resp, err := g.do(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return false, RemoteRepo{}, fmt.Errorf("gitlab: check %s/%s: %w", g.owner, spec.Name, err)
-	}
-	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusOK:
-		var p glProject
-		if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
-			return false, RemoteRepo{}, err
-		}
-		return true, p.remote(), nil
-	case http.StatusNotFound:
-		return false, RemoteRepo{}, nil
-	default:
-		return false, RemoteRepo{}, apiError(fmt.Sprintf("gitlab: check %s/%s", g.owner, spec.Name), resp, http.StatusBadRequest, "already been taken")
-	}
+	label := fmt.Sprintf("gitlab: check %s/%s", g.owner, spec.Name)
+	return checkRepo[glProject](label, func() (*http.Response, error) {
+		return g.do(ctx, http.MethodGet, endpoint, nil)
+	}, http.StatusBadRequest, "already been taken")
 }
 
 // CreateRepo creates name under the token user's namespace.
