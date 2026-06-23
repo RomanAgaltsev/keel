@@ -54,7 +54,8 @@ func TestLockReadV1HasNoFiles(t *testing.T) {
 	p := filepath.Join(dir, ".scaffold.lock")
 	// A v1 lock: no lock_version, no files.
 	require.NoError(t, os.WriteFile(p, []byte(
-		"keel_version: 1.5.0\nrecipe: go-service\nmodules:\n  - name: lint\n    source: builtin\n    version: 1.0.0\nanswers: {}\n"), 0o600))
+		"keel_version: 1.5.0\nrecipe: go-service\nmodules:\n  - name: lint\n    source: builtin\n    version: 1.0.0\nanswers: {}\n",
+	), 0o600))
 
 	got, err := lock.Read(p)
 	require.NoError(t, err)

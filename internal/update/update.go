@@ -63,36 +63,12 @@ func Classify(in Input) (Plan, error) {
 	var changes []FileChange
 
 	for dest, content := range in.Render {
-		mod := in.Owner[dest]
-		if !in.Candidates[mod] {
-			continue // only touch files owned by a candidate module
-		}
-		newHash := hash(content)
-
-		onHash, exists, err := in.HashOf(dest)
+		change, ok, err := classifyRendered(in, dest, content)
 		if err != nil {
 			return Plan{}, err
 		}
-		if !exists {
-			changes = append(changes, FileChange{Path: dest, Class: New, Content: content})
-			continue
-		}
-		if onHash == newHash {
-			continue // file already equals the new render: nothing to do
-		}
-
-		origHash, hasOrig := lookupOriginal(in.Original, mod, dest)
-		if !hasOrig && !in.VersionChanged[mod] {
-			// v1 lock but this module's version didn't change, so the current render
-			// reconstructs the original baseline.
-			origHash, hasOrig = newHash, true
-		}
-		switch {
-		case hasOrig && onHash == origHash:
-			changes = append(changes, FileChange{Path: dest, Class: Clean, Content: content})
-		default:
-			// Edited by the user, or no baseline to prove otherwise ⇒ conservative.
-			changes = append(changes, FileChange{Path: dest, Class: Conflict, Content: content})
+		if ok {
+			changes = append(changes, change)
 		}
 	}
 
@@ -107,6 +83,40 @@ func Classify(in Input) (Plan, error) {
 
 	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
 	return Plan{Changes: changes}, nil
+}
+
+// classifyRendered classifies a single rendered dest. The bool reports whether
+// the returned FileChange should be recorded (false ⇒ skip: not a candidate, or
+// already up to date).
+func classifyRendered(in Input, dest, content string) (FileChange, bool, error) {
+	mod := in.Owner[dest]
+	if !in.Candidates[mod] {
+		return FileChange{}, false, nil // only touch files owned by a candidate module
+	}
+	newHash := hash(content)
+
+	onHash, exists, err := in.HashOf(dest)
+	if err != nil {
+		return FileChange{}, false, err
+	}
+	if !exists {
+		return FileChange{Path: dest, Class: New, Content: content}, true, nil
+	}
+	if onHash == newHash {
+		return FileChange{}, false, nil // file already equals the new render: nothing to do
+	}
+
+	origHash, hasOrig := lookupOriginal(in.Original, mod, dest)
+	if !hasOrig && !in.VersionChanged[mod] {
+		// v1 lock but this module's version didn't change, so the current render
+		// reconstructs the original baseline.
+		origHash, hasOrig = newHash, true
+	}
+	if hasOrig && onHash == origHash {
+		return FileChange{Path: dest, Class: Clean, Content: content}, true, nil
+	}
+	// Edited by the user, or no baseline to prove otherwise ⇒ conservative.
+	return FileChange{Path: dest, Class: Conflict, Content: content}, true, nil
 }
 
 func lookupOriginal(orig map[string]map[string]string, mod, path string) (string, bool) {
