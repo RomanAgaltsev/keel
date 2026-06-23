@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/RomanAgaltsev/keel/compare/v1.5.0...v1.6.0) (2026-06-23)
+
+
+### Features
+
+* providers ([#23](https://github.com/RomanAgaltsev/keel/issues/23)) ([52d5f64](https://github.com/RomanAgaltsev/keel/commit/52d5f642fce91a920cdeacf56aa01228d9746249))
+
 ## [1.5.0](https://github.com/RomanAgaltsev/keel/compare/v1.4.0...v1.5.0) (2026-06-22)
 
 
