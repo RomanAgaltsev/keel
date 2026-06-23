@@ -53,7 +53,18 @@ func For(name string, env Env) (Provider, error) {
 			opts = append(opts, WithBitbucketBaseURL(env.BaseURL))
 		}
 		return NewBitbucket(env.Token, env.Owner, opts...), nil
-
+	case "sourcecraft":
+		if env.Token == "" {
+			return nil, errors.New("provider sourcecraft requires a token in $KEEL_SOURCECRAFT_TOKEN (or $SOURCECRAFT_TOKEN)")
+		}
+		if env.Owner == "" {
+			return nil, errors.New("provider sourcecraft requires an org (derived from the module path, or set $KEEL_SOURCECRAFT_OWNER)")
+		}
+		var opts []SourceCraftOption
+		if env.BaseURL != "" {
+			opts = append(opts, WithSourceCraftBaseURL(env.BaseURL))
+		}
+		return NewSourceCraft(env.Token, env.Owner, opts...), nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q", name)
 	}

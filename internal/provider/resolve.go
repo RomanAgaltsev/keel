@@ -31,6 +31,11 @@ var envSpecs = map[string]EnvSpec{
 		OwnerVar:  "KEEL_BITBUCKET_OWNER",
 		URLVar:    "KEEL_BITBUCKET_URL",
 	},
+	"sourcecraft": {
+		TokenVars: []string{"KEEL_SOURCECRAFT_TOKEN", "SOURCECRAFT_TOKEN"},
+		OwnerVar:  "KEEL_SOURCECRAFT_OWNER",
+		URLVar:    "KEEL_SOURCECRAFT_URL",
+	},
 }
 
 // Resolve constructs a provider by name, reading its token / owner / base-URL from

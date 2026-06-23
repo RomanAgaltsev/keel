@@ -55,3 +55,10 @@ func TestResolveBitbucket(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "bitbucket", p.Name())
 }
+
+func TestResolveSourceCraft(t *testing.T) {
+	t.Setenv("KEEL_SOURCECRAFT_TOKEN", "tok")
+	p, err := provider.Resolve("sourcecraft", "sourcecraft.dev/myorg/demo")
+	require.NoError(t, err)
+	require.Equal(t, "sourcecraft", p.Name())
+}
