@@ -67,6 +67,67 @@ func TestUpdateRoundTrip(t *testing.T) {
 	require.Contains(t, buf.String(), "up to date")
 }
 
+// TestUpdateReconfigureRerendersAllModules proves --reconfigure re-renders every
+// module against the (re-collected) answers, not just version-bumped ones: with a
+// changed answer in the lock and --no-input, an untouched file is refreshed in
+// place (Clean), no module versions having moved.
+func TestUpdateReconfigureRerendersAllModules(t *testing.T) {
+	repo := filepath.Join(t.TempDir(), "svc")
+
+	// 1. Scaffold a real go-service repo.
+	answersFile := writeAnswersFile(t)
+	root := newRootCmd()
+	root.SetArgs([]string{
+		"new", "--recipe", "go-service", "--target", repo,
+		"--answers", answersFile, "--no-input",
+	})
+	require.NoError(t, root.Execute())
+
+	gomod := filepath.Join(repo, "go.mod")
+	before, err := os.ReadFile(gomod)
+	require.NoError(t, err)
+	require.Contains(t, string(before), "github.com/x/demo") // the scaffolded module path
+
+	// 2. Change a recorded answer (as a reconfigure choice would) and drop a
+	//    defaulted answer (as an older lock would lack it), leaving every module
+	//    version current — so only --reconfigure makes them candidates.
+	lockPath := filepath.Join(repo, ".scaffold.lock")
+	lk, err := lock.Read(lockPath)
+	require.NoError(t, err)
+	lk.Answers["module_path"] = "github.com/x/renamed"
+	delete(lk.Answers, "enable_codeql") // security-go's question default is `true`
+	require.NoError(t, lock.Write(lockPath, lk))
+
+	// A plain update has nothing to do (no version is behind).
+	var buf bytes.Buffer
+	root = newRootCmd()
+	root.SetOut(&buf)
+	root.SetArgs([]string{"update", "--path", repo, "--dry-run"})
+	require.NoError(t, root.Execute())
+	require.Contains(t, buf.String(), "up to date")
+
+	// 3. --reconfigure re-renders all modules against the new answers.
+	root = newRootCmd()
+	root.SetArgs([]string{"update", "--path", repo, "--reconfigure", "--no-input"})
+	require.NoError(t, root.Execute())
+
+	// go.mod (never edited by the user) is refreshed in place with the new path.
+	after, err := os.ReadFile(gomod)
+	require.NoError(t, err)
+	require.Contains(t, string(after), "github.com/x/renamed")
+	require.NotContains(t, string(after), "github.com/x/demo")
+	// Clean overwrite, not a conflict: no sibling render is left behind.
+	_, statErr := os.Stat(gomod + ".keel-new")
+	require.True(t, os.IsNotExist(statErr))
+
+	// The lock persists the answers actually rendered with: the changed choice and
+	// the filled default (the latter would be absent if NewLock kept the old answers).
+	relocked, err := lock.Read(lockPath)
+	require.NoError(t, err)
+	require.Equal(t, "github.com/x/renamed", relocked.Answers["module_path"])
+	require.Equal(t, true, relocked.Answers["enable_codeql"])
+}
+
 // writeAnswersFile marshals fullAnswers() to a temp YAML file and returns its path.
 func writeAnswersFile(t *testing.T) string {
 	t.Helper()

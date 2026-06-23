@@ -65,10 +65,31 @@ func (r *Repo) AddAll(ctx context.Context) error {
 	return err
 }
 
+// Add stages only the given working-tree paths. The "--" stops a path that begins
+// with "-" from being parsed as a flag. Unlike AddAll it leaves unrelated changes
+// unstaged, so a scoped commit captures only the intended files.
+func (r *Repo) Add(ctx context.Context, paths ...string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	_, err := r.Run(ctx, append([]string{"add", "--"}, paths...)...)
+	return err
+}
+
 // HasChanges reports whether the working tree has any staged or unstaged
 // changes (so the orchestrator can skip an empty commit on idempotent re-runs).
 func (r *Repo) HasChanges(ctx context.Context) (bool, error) {
 	out, err := r.Run(ctx, "status", "--porcelain")
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(out) != "", nil
+}
+
+// HasStagedChanges reports whether anything is staged in the index (so a scoped
+// commit has something to record even when unrelated changes remain unstaged).
+func (r *Repo) HasStagedChanges(ctx context.Context) (bool, error) {
+	out, err := r.Run(ctx, "diff", "--cached", "--name-only")
 	if err != nil {
 		return false, err
 	}

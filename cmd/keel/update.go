@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/RomanAgaltsev/keel"
+	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/git"
 	"github.com/RomanAgaltsev/keel/internal/lock"
 	"github.com/RomanAgaltsev/keel/internal/module"
@@ -39,7 +41,7 @@ func newUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&f.path, "path", ".", "repository path to update")
-	cmd.Flags().BoolVar(&f.dryRun, "dry-run", false, "print the plan; write nothing")
+	cmd.Flags().BoolVar(&f.dryRun, "dry-run", false, "print the plan; write nothing (external module sources are still fetched)")
 	cmd.Flags().BoolVar(&f.reconfigure, "reconfigure", false, "re-run the wizard and re-render all modules")
 	cmd.Flags().BoolVar(&f.noInput, "no-input", false, "never prompt (CI mode); only meaningful with --reconfigure")
 	cmd.Flags().BoolVar(&f.commit, "commit", false, "commit the update when there are no conflicts")
@@ -49,6 +51,7 @@ func newUpdateCmd() *cobra.Command {
 }
 
 func runUpdate(cmd *cobra.Command, f *updateFlags) error {
+	out := cmd.OutOrStdout()
 	lockPath := filepath.Join(f.path, ".scaffold.lock")
 	lk, err := lock.Read(lockPath)
 	if err != nil {
@@ -69,15 +72,14 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 	}
 	names := rec.ModuleNames()
 
-	// Answers: stored verbatim by default; re-collected under --reconfigure.
-	ans := lk.Answers
-	if f.reconfigure {
-		ans, err = collectAnswers(comp, names, lk.Answers, f.noInput)
-		if err != nil {
-			return err
-		}
+	ans, err := updateAnswers(comp, names, lk, f)
+	if err != nil {
+		return err
 	}
 
+	if f.modules != "" {
+		warnUnknownModules(out, lk, splitCSV(f.modules))
+	}
 	candidates, versionChanged, refreshed, err := selectCandidates(f, lk, comp)
 	if err != nil {
 		return err
@@ -100,12 +102,48 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 		return err
 	}
 
-	out := cmd.OutOrStdout()
 	if f.dryRun {
-		printUpdatePlan(out, up, true)
+		printUpdatePlan(out, up, true, f.overwrite)
 		return nil
 	}
-	return applyUpdate(cmd, f, lockPath, lk, plan, up, refreshed)
+	// Nothing is behind: leave the lock (and tree) untouched rather than rewriting
+	// it just to bump keel_version.
+	if len(candidates) == 0 {
+		fmt.Fprintln(out, "everything is up to date")
+		return nil
+	}
+	return applyUpdate(cmd, f, lockPath, lk, ans, plan, up, refreshed)
+}
+
+// updateAnswers resolves the answer set used to render. By default the stored
+// answers are carried forward, with any questions added since this repo was
+// scaffolded filled from their defaults (so an evolved template referencing a new
+// key renders instead of failing with a raw missingkey error); a new *required*
+// question with no default yields a clear "use --reconfigure" error. Under
+// --reconfigure the wizard re-runs, seeded from the lock.
+func updateAnswers(comp *module.Composite, names []string, lk lock.Lock, f *updateFlags) (answers.Answers, error) {
+	if f.reconfigure {
+		return collectAnswers(comp, names, lk.Answers, f.noInput)
+	}
+	ans, err := collectAnswers(comp, names, lk.Answers, true) // noInput: fill defaults, never prompt
+	if err != nil {
+		return nil, fmt.Errorf("stored answers are missing a value a newer template needs; re-run with --reconfigure: %w", err)
+	}
+	return ans, nil
+}
+
+// warnUnknownModules notes any --modules name that does not match a module recorded
+// in the lock, so a typo isn't silently swallowed by the candidate intersection.
+func warnUnknownModules(out io.Writer, lk lock.Lock, requested []string) {
+	locked := map[string]bool{}
+	for _, m := range lk.Modules {
+		locked[m.Name] = true
+	}
+	for _, name := range requested {
+		if !locked[name] {
+			fmt.Fprintf(out, "warning: --modules %q is not a module in this repo's lock\n", name)
+		}
+	}
 }
 
 // selectCandidates determines which modules to update (version-bumped only, or
@@ -131,13 +169,17 @@ func selectCandidates(f *updateFlags, lk lock.Lock, comp *module.Composite) (can
 
 // applyUpdate writes the classified plan, rewrites the lock to the refreshed
 // versions, and commits when --commit is set and there are no conflicts.
-func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lock, plan render.Plan, up update.Plan, refreshed map[string]string) error {
+func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lock, ans answers.Answers, plan render.Plan, up update.Plan, refreshed map[string]string) error {
 	out := cmd.OutOrStdout()
 	applied, err := update.Apply(up, f.path, f.overwrite)
 	if err != nil {
 		return err
 	}
 	newLock := update.NewLock(lk, plan.Files, plan.Owner(), refreshed, version)
+	// Persist the answers actually rendered with — re-collected choices under
+	// --reconfigure, or stored answers with newly-added defaults filled — so the
+	// lock stays consistent with the hashes just recorded.
+	newLock.Answers = ans
 	if err := lock.Write(lockPath, newLock); err != nil {
 		return err
 	}
@@ -145,7 +187,12 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 
 	switch {
 	case f.commit && len(applied.Conflicts) == 0:
-		if err := commitUpdate(cmd.Context(), f.path, lk.Answers); err != nil {
+		// Stage only what keel wrote (plus the lock), never the user's unrelated
+		// working-tree changes.
+		staged := append([]string{}, applied.Updated...)
+		staged = append(staged, applied.New...)
+		staged = append(staged, ".scaffold.lock")
+		if err := commitUpdate(cmd.Context(), f.path, lk.Answers, staged); err != nil {
 			return err
 		}
 		fmt.Fprintln(out, "committed: chore: keel update")
@@ -160,11 +207,10 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 func updateCandidates(lk lock.Lock, comp *module.Composite) (cand, changed map[string]bool, err error) {
 	cand, changed = map[string]bool{}, map[string]bool{}
 	for _, m := range lk.Modules {
-		cur, lerr := comp.Load(m.Name)
-		if lerr != nil {
+		if _, lerr := comp.Load(m.Name); lerr != nil {
 			return nil, nil, fmt.Errorf("module %q: %w", m.Name, lerr)
 		}
-		curVer := resolvedVersion(comp, m.Name, cur.Version)
+		curVer := resolvedVersion(comp, m.Name)
 		cmp, cerr := modver.Compare(m.Version, curVer)
 		if cerr != nil {
 			// Unparseable versions ⇒ treat as unchanged (don't guess a bump).
@@ -178,14 +224,10 @@ func updateCandidates(lk lock.Lock, comp *module.Composite) (cand, changed map[s
 	return cand, changed, nil
 }
 
-// resolvedVersion returns the version the loader reports for a module, falling
-// back to the manifest version for a plain builtin loader.
-func resolvedVersion(comp *module.Composite, name, manifestVer string) string {
-	if p, ok := any(comp).(module.Provenancer); ok {
-		_, ver := p.Provenance(name)
-		return ver
-	}
-	return manifestVer
+// resolvedVersion returns the version the loader reports for a module.
+func resolvedVersion(comp *module.Composite, name string) string {
+	_, ver := comp.Provenance(name)
+	return ver
 }
 
 // lockOriginals indexes the lock's recorded hashes as module → path → sha.
@@ -201,7 +243,7 @@ func lockOriginals(lk lock.Lock) map[string]map[string]string {
 	return out
 }
 
-func printUpdatePlan(out interface{ Write([]byte) (int, error) }, up update.Plan, dryRun bool) {
+func printUpdatePlan(out io.Writer, up update.Plan, dryRun, overwrite bool) {
 	prefix := ""
 	if dryRun {
 		prefix = "[dry-run] "
@@ -212,7 +254,13 @@ func printUpdatePlan(out interface{ Write([]byte) (int, error) }, up update.Plan
 	}
 	sort.Slice(up.Changes, func(i, j int) bool { return up.Changes[i].Path < up.Changes[j].Path })
 	for _, c := range up.Changes {
-		fmt.Fprintf(out, "%s%-12s %s\n", prefix, className(c.Class), c.Path)
+		// Mirror what Apply would do: with --overwrite an edited file is replaced in
+		// place rather than written to a .keel-new sibling.
+		label := className(c.Class)
+		if overwrite && c.Class == update.Conflict {
+			label = "overwrite"
+		}
+		fmt.Fprintf(out, "%s%-12s %s\n", prefix, label, c.Path)
 	}
 }
 
@@ -259,11 +307,10 @@ func allModules(lk lock.Lock) map[string]bool {
 func refreshedVersions(candidates map[string]bool, comp *module.Composite) (map[string]string, error) {
 	out := map[string]string{}
 	for name := range candidates {
-		m, err := comp.Load(name)
-		if err != nil {
+		if _, err := comp.Load(name); err != nil {
 			return nil, fmt.Errorf("module %q: %w", name, err)
 		}
-		out[name] = resolvedVersion(comp, name, m.Version)
+		out[name] = resolvedVersion(comp, name)
 	}
 	return out, nil
 }
@@ -292,33 +339,36 @@ func intersect(set map[string]bool, keep []string) map[string]bool {
 	return out
 }
 
-// commitUpdate stages everything and commits, setting identity from the lock's
-// recorded author answers (the repo may not have a local identity configured).
-func commitUpdate(ctx context.Context, path string, answers map[string]any) error {
+// commitUpdate stages the given paths and commits. It sets the repo identity from
+// the lock's recorded author answers only when both are present, so it never
+// clobbers an identity the user already configured.
+func commitUpdate(ctx context.Context, path string, answers map[string]any, paths []string) error {
 	repo := git.New(path)
 	if !repo.IsRepo() {
 		return fmt.Errorf("update --commit: %q is not a git repository", path)
 	}
 	name, _ := answers["author_name"].(string)
 	email, _ := answers["author_email"].(string)
-	if err := repo.SetIdentity(ctx, name, email); err != nil {
+	if name != "" && email != "" {
+		if err := repo.SetIdentity(ctx, name, email); err != nil {
+			return err
+		}
+	}
+	if err := repo.Add(ctx, paths...); err != nil {
 		return err
 	}
-	if err := repo.AddAll(ctx); err != nil {
-		return err
-	}
-	changed, err := repo.HasChanges(ctx)
+	staged, err := repo.HasStagedChanges(ctx)
 	if err != nil {
 		return err
 	}
-	if !changed {
+	if !staged {
 		return nil
 	}
 	return repo.Commit(ctx, "chore: keel update")
 }
 
 // printApplied prints the per-class summary, deterministically.
-func printApplied(out interface{ Write([]byte) (int, error) }, a update.Applied) {
+func printApplied(out io.Writer, a update.Applied) {
 	line := func(label string, items []string) {
 		if len(items) == 0 {
 			return

@@ -127,6 +127,146 @@ func TestUpdateConflictWritesKeelNewAndBlocksCommit(t *testing.T) {
 	require.NotContains(t, gitLog(t, target), "keel update")
 }
 
+// TestUpdateFillsDefaultsForNewerTemplateKeys covers H1: a lock written by an older
+// keel (missing an answer a newer template references) must render via the question's
+// default instead of failing with a raw missingkey error.
+func TestUpdateFillsDefaultsForNewerTemplateKeys(t *testing.T) {
+	target := t.TempDir()
+	ans := fullAnswers()
+	delete(ans, "enable_codeql") // security-go gained this question after this repo was scaffolded
+	lk := lock.Lock{
+		KeelVersion: "0.0.0", Recipe: "go-service",
+		Modules: []lock.Module{{Name: "security-go", Source: "builtin", Version: "0.0.1"}},
+		Answers: ans,
+	}
+	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
+
+	root := newRootCmd()
+	root.SetArgs([]string{"update", "--path", target, "--dry-run"})
+	// Before the fix this failed with `map has no entry for key "enable_codeql"`.
+	require.NoError(t, root.Execute())
+}
+
+// TestUpdateRequiresReconfigureForMissingRequiredAnswer covers H1's other half: a
+// missing *required* answer with no default is a clear, actionable error.
+func TestUpdateRequiresReconfigureForMissingRequiredAnswer(t *testing.T) {
+	target := t.TempDir()
+	ans := fullAnswers()
+	delete(ans, "repo_name") // required core question, no default
+	lk := lock.Lock{
+		KeelVersion: "0.0.0", Recipe: "go-service",
+		Modules: []lock.Module{{Name: "base-go", Source: "builtin", Version: "0.0.1"}},
+		Answers: ans,
+	}
+	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
+
+	root := newRootCmd()
+	root.SetArgs([]string{"update", "--path", target, "--dry-run"})
+	err := root.Execute()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--reconfigure")
+}
+
+// TestUpdateNoCandidatesLeavesLockUntouched covers M1(a): when nothing is behind,
+// the lock is not rewritten just to bump keel_version.
+func TestUpdateNoCandidatesLeavesLockUntouched(t *testing.T) {
+	target := t.TempDir()
+	lk := lock.Lock{
+		KeelVersion: "0.0.0", Recipe: "go-service",
+		Modules: []lock.Module{{Name: "lint-go", Source: "builtin", Version: "999.0.0"}}, // ahead ⇒ not a candidate
+		Answers: fullAnswers(),
+	}
+	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
+	before, err := os.ReadFile(filepath.Join(target, ".scaffold.lock"))
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&buf)
+	root.SetArgs([]string{"update", "--path", target})
+	require.NoError(t, root.Execute())
+
+	require.Contains(t, buf.String(), "up to date")
+	after, err := os.ReadFile(filepath.Join(target, ".scaffold.lock"))
+	require.NoError(t, err)
+	require.Equal(t, before, after) // lock byte-for-byte unchanged
+}
+
+// TestUpdateCommitCleanScopesToKeelFiles covers M1(b) + M2: a clean --commit makes
+// exactly one commit containing keel's files but not the user's unrelated WIP.
+func TestUpdateCommitCleanScopesToKeelFiles(t *testing.T) {
+	target := t.TempDir()
+	require.NoError(t, gitInit(t, target))
+	clean := "version: v2.0.0\n"
+	lk := lock.Lock{
+		KeelVersion: "0.0.0", Recipe: "go-service",
+		Modules: []lock.Module{{
+			Name: "lint-go", Source: "builtin", Version: "0.0.1",
+			Files: []lock.File{{Path: ".golangci.yml", SHA256: lock.HashBytes([]byte(clean))}}, // == on-disk ⇒ Clean
+		}},
+		Answers: fullAnswers(),
+	}
+	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
+	require.NoError(t, os.WriteFile(filepath.Join(target, ".golangci.yml"), []byte(clean), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(target, "UNRELATED.txt"), []byte("wip"), 0o644))
+
+	root := newRootCmd()
+	root.SetArgs([]string{"update", "--path", target, "--modules", "lint-go", "--commit"})
+	require.NoError(t, root.Execute())
+
+	require.Contains(t, gitLog(t, target), "keel update")
+	out, err := exec.Command("git", "-C", target, "show", "--name-only", "--format=", "HEAD").CombinedOutput()
+	require.NoError(t, err, string(out))
+	require.Contains(t, string(out), ".golangci.yml")
+	require.Contains(t, string(out), ".scaffold.lock")
+	require.NotContains(t, string(out), "UNRELATED.txt") // the user's WIP is not bundled in
+}
+
+// TestUpdateDryRunOverwriteRelabelsConflict covers M3: --dry-run must reflect what
+// --overwrite would actually do (replace in place, not write .keel-new).
+func TestUpdateDryRunOverwriteRelabelsConflict(t *testing.T) {
+	target := t.TempDir()
+	lk := lock.Lock{
+		KeelVersion: "0.0.0", Recipe: "go-service",
+		Modules: []lock.Module{{
+			Name: "lint-go", Source: "builtin", Version: "0.0.1",
+			Files: []lock.File{{Path: ".golangci.yml", SHA256: "deadbeef"}}, // != on-disk ⇒ Conflict
+		}},
+		Answers: fullAnswers(),
+	}
+	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
+	require.NoError(t, os.WriteFile(filepath.Join(target, ".golangci.yml"), []byte("user-edited"), 0o644))
+
+	var buf bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&buf)
+	root.SetArgs([]string{"update", "--path", target, "--dry-run", "--overwrite"})
+	require.NoError(t, root.Execute())
+
+	out := buf.String()
+	require.Contains(t, out, "overwrite")
+	require.NotContains(t, out, "conflict")
+}
+
+// TestUpdateWarnsOnUnknownModule covers L3: a --modules typo is surfaced, not
+// silently swallowed by the candidate intersection.
+func TestUpdateWarnsOnUnknownModule(t *testing.T) {
+	target := t.TempDir()
+	lk := lock.Lock{
+		KeelVersion: "0.0.0", Recipe: "go-service",
+		Modules: []lock.Module{{Name: "lint-go", Source: "builtin", Version: "0.0.1"}},
+		Answers: fullAnswers(),
+	}
+	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
+
+	var buf bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&buf)
+	root.SetArgs([]string{"update", "--path", target, "--dry-run", "--modules", "lnt-go"})
+	require.NoError(t, root.Execute())
+	require.Contains(t, buf.String(), `--modules "lnt-go" is not a module`)
+}
+
 // modverCompare wraps modver.Compare for the apply-path tests.
 func modverCompare(t *testing.T, a, b string) (int, error) {
 	t.Helper()
