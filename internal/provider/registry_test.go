@@ -24,3 +24,9 @@ func TestForNoneIsNil(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, p)
 }
+
+func TestForGitHubBaseURL(t *testing.T) {
+	p, err := provider.For("github", provider.Env{Token: "tok", Owner: "me", BaseURL: "https://ghe.example.com"})
+	require.NoError(t, err)
+	require.Equal(t, "github", p.Name())
+}

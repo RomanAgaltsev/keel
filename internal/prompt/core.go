@@ -14,7 +14,7 @@ func CoreQuestions() []manifest.Question {
 		{ID: "author_email", Prompt: "Author email", Type: "string", Required: true},
 		{ID: "license", Prompt: "License", Type: "select", Options: []string{"MIT", "Apache-2.0", "BSD-3-Clause", "none"}, Default: "MIT"},
 		{ID: "visibility", Prompt: "Visibility", Type: "select", Options: []string{"public", "private"}, Default: "public"},
-		{ID: "provider", Prompt: "Remote provider", Type: "select", Options: []string{"github", "none"}, Default: "github"},
+		{ID: "provider", Prompt: "Remote provider", Type: "select", Options: []string{"github", "gitlab", "bitbucket", "sourcecraft", "none"}, Default: "github"},
 		{ID: "create_remote", Prompt: "Create the remote repository?", Type: "bool", Default: true},
 	}
 }

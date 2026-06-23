@@ -128,7 +128,7 @@ func printReport(out io.Writer, rep outdated.Report) {
 		}
 	}
 	if len(rep.Modules) > 0 {
-		fmt.Fprintln(out, "Outdated keel modules (run keel update when available):")
+		fmt.Fprintln(out, "Outdated keel modules (re-scaffold or bump the pins to update):")
 		for _, u := range rep.Modules {
 			fmt.Fprintf(out, "  %-32s %s -> %s\n", u.Name, u.Current, u.Latest)
 		}
