@@ -9,7 +9,7 @@ import (
 // NewLock rebuilds the post-update lock. Modules named in refreshed get their new
 // version and freshly hashed files (from renderContent, grouped by owner); all
 // other modules keep their previous entry. keelVersion stamps the running binary.
-func NewLock(old lock.Lock, renderContent, owner map[string]string, refreshed map[string]string, keelVersion string) lock.Lock {
+func NewLock(old lock.Lock, renderContent, owner, refreshed map[string]string, keelVersion string) lock.Lock {
 	// Pre-group the new renders by module for the refreshed entries.
 	filesByModule := map[string][]lock.File{}
 	dests := make([]string, 0, len(renderContent))
