@@ -6,7 +6,7 @@ type Manifest struct {
 	Name        string     `yaml:"name"`
 	Description string     `yaml:"description"`
 	Version     string     `yaml:"version"`
-	Language    string     `yaml:"language"` // any | go | rust
+	Language    string     `yaml:"language"` // any | go | rust; enforced against the recipe's language
 	Requires    []string   `yaml:"requires"`
 	Questions   []Question `yaml:"questions"`
 	Files       []FileRule `yaml:"files"`

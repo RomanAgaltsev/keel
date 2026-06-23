@@ -40,19 +40,28 @@ func TestGitLabRepoExists(t *testing.T) {
 
 func TestGitLabCreateRepo(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/projects", r.URL.Path)
 		require.Equal(t, "Bearer tok", r.Header.Get("Authorization"))
-		var body map[string]any
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		require.Equal(t, "new", body["name"])
-		require.Equal(t, "private", body["visibility"])
-		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"http_url_to_repo":"https://gl/me/new.git","web_url":"https://gl/me/new"}`))
+		switch r.URL.Path {
+		case "/namespaces/group/subgroup":
+			// Owner is resolved to a namespace id before the project is created.
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"id":42}`))
+		case "/projects":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, "new", body["name"])
+			require.Equal(t, "private", body["visibility"])
+			require.EqualValues(t, 42, body["namespace_id"]) // created in the requested namespace
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"http_url_to_repo":"https://gl/group/subgroup/new.git","web_url":"https://gl/group/subgroup/new"}`))
+		default:
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
 	}))
 	defer srv.Close()
 
-	gl := provider.NewGitLab("tok", "me", provider.WithGitLabBaseURL(srv.URL))
+	gl := provider.NewGitLab("tok", "group/subgroup", provider.WithGitLabBaseURL(srv.URL))
 	repo, err := gl.CreateRepo(context.Background(), provider.RepoSpec{Name: "new", Private: true})
 	require.NoError(t, err)
-	require.Equal(t, "https://gl/me/new.git", repo.CloneURL)
+	require.Equal(t, "https://gl/group/subgroup/new.git", repo.CloneURL)
 }

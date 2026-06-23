@@ -78,10 +78,9 @@ func (s *SourceCraft) RepoExists(ctx context.Context, spec RepoSpec) (bool, Remo
 	// Task 1: single-repo GET path is /repos/{org_slug}/{repo_slug} (no /orgs prefix).
 	endpoint := fmt.Sprintf("%s/repos/%s/%s", s.baseURL, s.owner, spec.Name)
 	label := fmt.Sprintf("sourcecraft: check %s/%s", s.owner, spec.Name)
-	// Task 1: conflict status/body undocumented; verify live (Task 4).
 	return checkRepo[scRepo](label, func() (*http.Response, error) {
 		return s.do(ctx, http.MethodGet, endpoint, nil)
-	}, http.StatusConflict, "already exists")
+	})
 }
 
 // CreateRepo creates org/name.

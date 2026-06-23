@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/manifest"
@@ -126,6 +127,13 @@ func coerceInts(qs []manifest.Question, a answers.Answers) error {
 		case int:
 			// already numeric
 		case string:
+			n = strings.TrimSpace(n)
+			if n == "" {
+				// An optional int left blank in the wizard arrives as "". Treat it as
+				// unset rather than a parse error; applyDefaults/required already ran.
+				delete(a, q.ID)
+				continue
+			}
 			parsed, err := strconv.Atoi(n)
 			if err != nil {
 				return fmt.Errorf("answer %q must be an integer: %q", q.ID, n)

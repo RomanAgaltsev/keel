@@ -65,7 +65,7 @@ func (g *GitHub) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRep
 	label := fmt.Sprintf("github: check %s/%s", g.owner, spec.Name)
 	return checkRepo[ghRepo](label, func() (*http.Response, error) {
 		return g.do(ctx, http.MethodGet, url, nil)
-	}, http.StatusUnprocessableEntity, "already exists")
+	})
 }
 
 // CreateRepo creates owner/name under the authenticated user.

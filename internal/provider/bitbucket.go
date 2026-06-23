@@ -83,7 +83,7 @@ func (b *Bitbucket) RepoExists(ctx context.Context, spec RepoSpec) (bool, Remote
 	label := fmt.Sprintf("bitbucket: check %s/%s", b.owner, spec.Name)
 	return checkRepo[bbRepo](label, func() (*http.Response, error) {
 		return b.do(ctx, http.MethodGet, endpoint, nil)
-	}, http.StatusBadRequest, "already exists")
+	})
 }
 
 // CreateRepo creates workspace/name.

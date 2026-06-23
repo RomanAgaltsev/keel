@@ -105,7 +105,7 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 	}
 
 	res, err := scaffold.Run(cmd.Context(), scaffold.Options{
-		Target: target, Recipe: rec.Name, ModuleNames: names, Loader: comp,
+		Target: target, Recipe: rec.Name, Language: rec.Language, ModuleNames: names, Loader: comp,
 		Provider: p, Answers: ans, CreateRemote: createRemote, RemoteURL: f.remoteURL,
 		Overwrite: f.overwrite, DryRun: f.dryRun, KeelVersion: version,
 	})

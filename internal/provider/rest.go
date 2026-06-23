@@ -8,10 +8,11 @@ import (
 
 // checkRepo interprets the single-repo GET shared by the REST providers: 200 decodes
 // the body (T.remote() yields the RemoteRepo), 404 means absent, and any other status
-// becomes an apiError, mapping conflictStatus + conflictMsg onto ErrRepoExists. label
-// prefixes every error (e.g. "github: check owner/name"). The request is issued via do
-// so the response body is opened and closed in one place.
-func checkRepo[T interface{ remote() RemoteRepo }](label string, do func() (*http.Response, error), conflictStatus int, conflictMsg string) (bool, RemoteRepo, error) {
+// becomes an apiError. label prefixes every error (e.g. "github: check owner/name").
+// The request is issued via do so the response body is opened and closed in one place.
+// On the read path an "already exists" conflict is not meaningful (existence is the 200
+// case), so the ErrRepoExists mapping lives only in each provider's CreateRepo.
+func checkRepo[T interface{ remote() RemoteRepo }](label string, do func() (*http.Response, error)) (bool, RemoteRepo, error) {
 	resp, err := do()
 	if err != nil {
 		return false, RemoteRepo{}, fmt.Errorf("%s: %w", label, err)
@@ -27,6 +28,6 @@ func checkRepo[T interface{ remote() RemoteRepo }](label string, do func() (*htt
 	case http.StatusNotFound:
 		return false, RemoteRepo{}, nil
 	default:
-		return false, RemoteRepo{}, apiError(label, resp, conflictStatus, conflictMsg)
+		return false, RemoteRepo{}, apiError(label, resp, 0, "")
 	}
 }

@@ -81,6 +81,16 @@ func TestCollectCoercesIntAnswers(t *testing.T) {
 	require.ErrorContains(t, err, "integer")
 }
 
+func TestCollectOptionalIntBlankIsUnset(t *testing.T) {
+	// An optional int left blank in the wizard arrives as "" and must not fail; it
+	// is simply absent from the result rather than a parse error.
+	qs := []manifest.Question{{ID: "replicas", Prompt: "Replicas", Type: "int"}}
+	got, err := prompt.Collect(qs, answers.Answers{"replicas": "  "}, nil)
+	require.NoError(t, err)
+	_, present := got["replicas"]
+	require.False(t, present)
+}
+
 func TestCollectInteractiveAsksMissing(t *testing.T) {
 	preset := fullPreset()
 	delete(preset, "description") // optional, but asker can fill

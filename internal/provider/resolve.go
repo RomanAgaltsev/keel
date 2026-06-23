@@ -71,12 +71,14 @@ func firstEnv(keys ...string) string {
 	return ""
 }
 
-// ownerFromModulePath extracts the owner from a module path like
-// "github.com/Owner/repo" → "Owner". Empty if it can't be determined.
+// ownerFromModulePath extracts the owner namespace from a module path: everything
+// between the host and the final (repo) segment. "github.com/Owner/repo" → "Owner";
+// "gitlab.com/group/subgroup/repo" → "group/subgroup" (GitLab subgroups). Empty if
+// it can't be determined.
 func ownerFromModulePath(mp string) string {
 	parts := strings.Split(mp, "/")
 	if len(parts) >= 3 {
-		return parts[1]
+		return strings.Join(parts[1:len(parts)-1], "/")
 	}
 	return ""
 }

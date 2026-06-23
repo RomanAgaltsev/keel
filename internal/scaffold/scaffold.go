@@ -20,6 +20,7 @@ import (
 type Options struct {
 	Target       string
 	Recipe       string
+	Language     string // recipe language; modules must be "any"/"" or match it
 	ModuleNames  []string
 	Loader       module.Loader
 	Provider     provider.Provider // may be nil when CreateRemote is false
@@ -52,6 +53,9 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	//    the lockfile, so the graph is walked only once per run.
 	manifests, err := module.Resolve(opts.Loader, opts.ModuleNames)
 	if err != nil {
+		return res, err
+	}
+	if err := checkLanguages(opts.Language, manifests); err != nil {
 		return res, err
 	}
 	plan, err := render.BuildFromManifests(opts.Loader, manifests, opts.Answers)
@@ -277,6 +281,23 @@ func remoteStep(ctx context.Context, repo *git.Repo, opts Options, spec provider
 		res.NextSteps = []string{fmt.Sprintf("git push failed; run: git -C %s push -u origin main", opts.Target)}
 	} else {
 		res.Pushed = true
+	}
+	return nil
+}
+
+// checkLanguages rejects a module whose declared language is incompatible with the
+// recipe's: a module language of "" or "any" matches any recipe, otherwise it must
+// equal recipeLang. Skipped when the recipe declares no language.
+func checkLanguages(recipeLang string, manifests []manifest.Manifest) error {
+	if recipeLang == "" {
+		return nil
+	}
+	for _, m := range manifests {
+		switch m.Language {
+		case "", "any", recipeLang:
+		default:
+			return fmt.Errorf("module %q declares language %q, incompatible with the %q recipe", m.Name, m.Language, recipeLang)
+		}
 	}
 	return nil
 }
