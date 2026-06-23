@@ -98,7 +98,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 
 	// 4-6. git init + identity, write lock, stage + commit.
 	repo := git.New(opts.Target)
-	committed, err := commitStep(ctx, repo, opts, manifests)
+	committed, err := commitStep(ctx, repo, opts, manifests, plan)
 	if err != nil {
 		return res, err
 	}
@@ -201,7 +201,7 @@ func materialize(ctx context.Context, opts Options, plan render.Plan, state Stat
 // It reports whether a commit was actually created (an idempotent re-run with no
 // staged changes produces no commit). The lock is written *before* committing so
 // it lands in the same commit (and re-runs with identical answers produce no diff).
-func commitStep(ctx context.Context, repo *git.Repo, opts Options, manifests []manifest.Manifest) (bool, error) {
+func commitStep(ctx context.Context, repo *git.Repo, opts Options, manifests []manifest.Manifest, plan render.Plan) (bool, error) {
 	if !repo.IsRepo() {
 		if err := repo.Init(ctx, "main"); err != nil {
 			return false, err
@@ -210,7 +210,7 @@ func commitStep(ctx context.Context, repo *git.Repo, opts Options, manifests []m
 	if err := repo.SetIdentity(ctx, opts.Answers.String("author_name"), opts.Answers.String("author_email")); err != nil {
 		return false, err
 	}
-	if err := writeLock(opts, manifests); err != nil {
+	if err := writeLock(opts, manifests, plan); err != nil {
 		return false, err
 	}
 
@@ -232,17 +232,34 @@ func commitStep(ctx context.Context, repo *git.Repo, opts Options, manifests []m
 	return true, nil
 }
 
-// writeLock writes .scaffold.lock recording what produced the repo, from the
-// already-resolved manifests (no second graph walk).
-func writeLock(opts Options, manifests []manifest.Manifest) error {
+// writeLock writes .scaffold.lock recording what produced the repo, including a
+// hash of every rendered file grouped by the module that wrote it (lock v2).
+func writeLock(opts Options, manifests []manifest.Manifest, plan render.Plan) error {
 	prov, hasProv := opts.Loader.(module.Provenancer)
+	owner := plan.Owner()
+
+	// Group rendered dests by module, hashing the rendered content.
+	byModule := map[string][]lock.File{}
+	dests := make([]string, 0, len(plan.Files))
+	for dest := range plan.Files {
+		dests = append(dests, dest)
+	}
+	sort.Strings(dests) // deterministic file order in the lock
+	for _, dest := range dests {
+		mod := owner[dest]
+		byModule[mod] = append(byModule[mod], lock.File{
+			Path:   dest,
+			SHA256: lock.HashBytes([]byte(plan.Files[dest])),
+		})
+	}
+
 	lmods := make([]lock.Module, len(manifests))
 	for i, m := range manifests {
 		source, version := "builtin", m.Version
 		if hasProv {
 			source, version = prov.Provenance(m.Name)
 		}
-		lmods[i] = lock.Module{Name: m.Name, Source: source, Version: version}
+		lmods[i] = lock.Module{Name: m.Name, Source: source, Version: version, Files: byModule[m.Name]}
 	}
 	return lock.Write(filepath.Join(opts.Target, ".scaffold.lock"), lock.Lock{
 		KeelVersion: opts.KeelVersion, Recipe: opts.Recipe, Modules: lmods, Answers: opts.Answers,
