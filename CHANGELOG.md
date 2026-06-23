@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/RomanAgaltsev/keel/compare/v1.7.0...v1.7.1) (2026-06-23)
+
+
+### Bug Fixes
+
+* review issues ([#27](https://github.com/RomanAgaltsev/keel/issues/27)) ([bc42a55](https://github.com/RomanAgaltsev/keel/commit/bc42a55fdcd905078d0d9085a06f0e192dbd246f))
+
 ## [1.7.0](https://github.com/RomanAgaltsev/keel/compare/v1.6.0...v1.7.0) (2026-06-23)
 
 
