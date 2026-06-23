@@ -105,3 +105,7 @@ func safeDest(dest string) error {
 	}
 	return nil
 }
+
+// SafeDest reports whether dest stays inside the target tree (exported wrapper
+// over safeDest, reused by the update apply path).
+func SafeDest(dest string) error { return safeDest(dest) }
