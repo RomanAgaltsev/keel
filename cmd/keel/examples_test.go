@@ -26,6 +26,7 @@ func TestExamplesDryRun(t *testing.T) {
 		{"local-only", "go-service", filepath.Join(examplesDir, "answers", "local-only.yaml")},
 		{"ci", "go-service", filepath.Join(examplesDir, "answers", "ci.yaml")},
 		{"gitlab", "go-service", filepath.Join(examplesDir, "answers", "gitlab.yaml")},
+		{"custom-recipe", filepath.Join(examplesDir, "custom-recipe", "recipe.yaml"), filepath.Join(examplesDir, "answers", "local-only.yaml")},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

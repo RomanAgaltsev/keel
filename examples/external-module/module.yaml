@@ -1,0 +1,21 @@
+# An example external module. Because it is loaded from a recipe `dir:` source,
+# its module.yaml and templates/ sit at the root of this directory (not under
+# modules/<name>/ like the builtin modules).
+name: editorconfig
+description: Add a templated .editorconfig (example external module)
+version: 1.0.0
+language: any
+requires: [base-layout]
+questions:
+  - id: enable_editorconfig
+    prompt: "Add an .editorconfig?"
+    type: bool
+    default: true
+  - id: indent_size
+    prompt: "Indent size"
+    type: int
+    default: 4
+files:
+  - src: "*" # matches templates/.editorconfig.tmpl
+    dest: "."
+    when: "{{ .enable_editorconfig }}" # demonstrates a when-condition

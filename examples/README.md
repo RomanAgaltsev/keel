@@ -23,4 +23,7 @@ Add --dry-run to preview the plan without writing anything or hitting the networ
 
 ## Custom recipe + external module
 
-See `custom-recipe/` and `external-module/` — a user-defined recipe that composes builtin modules differently and pulls in a local external module.
+| Path | What it shows |
+|------|---------------|
+| `external-module/` | A worked external module (`module.yaml` + `templates/`): a `bool`+`int` question, a `when` condition, and a templated `.tmpl` file. |
+| `custom-recipe/recipe.yaml` | A user recipe composing builtins differently and pulling in the external module via a relative `dir:` source. |
