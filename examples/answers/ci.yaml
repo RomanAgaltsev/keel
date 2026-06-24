@@ -1,0 +1,12 @@
+# Minimal non-interactive set for CI (omitted module questions fall back to
+# their defaults under --no-input).
+#   keel new --recipe go-service --answers examples/answers/ci.yaml --no-input
+repo_name: ci-demo
+description: Minimal CI scaffold
+module_path: github.com/you/ci-demo
+author_name: CI Bot
+author_email: ci@example.com
+license: MIT
+visibility: public
+provider: none
+create_remote: false
