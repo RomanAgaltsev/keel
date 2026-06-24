@@ -1,0 +1,17 @@
+# Create the remote on GitLab (set KEEL_GITLAB_TOKEN in the environment first).
+# The owner is derived from module_path: gitlab.com/acme-group/widget -> acme-group.
+#   KEEL_GITLAB_TOKEN=xxxxx keel new --recipe go-service \
+#     --answers examples/answers/gitlab.yaml --no-input
+repo_name: widget
+description: A GitLab-hosted service
+module_path: gitlab.com/acme-group/widget
+author_name: Your Name
+author_email: you@example.com
+license: MIT
+visibility: private
+provider: gitlab
+create_remote: true
+dep_bot: dependabot
+enable_codeql: true
+enable_govulncheck: true
+enable_codecov: true

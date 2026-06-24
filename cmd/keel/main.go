@@ -1,3 +1,6 @@
+// Command keel scaffolds a new git repository from composable template modules,
+// driven by an interactive wizard or an answers file, and optionally creates and
+// pushes the remote. See https://github.com/RomanAgaltsev/keel for usage.
 package main
 
 import (

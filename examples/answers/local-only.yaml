@@ -1,0 +1,11 @@
+# Local-only: scaffold + git init + commit, but create no remote.
+#   keel new --recipe go-service --answers examples/answers/local-only.yaml --no-input
+repo_name: demo-local
+description: A local-only demo (no remote created)
+module_path: github.com/you/demo-local
+author_name: Your Name
+author_email: you@example.com
+license: MIT
+visibility: private
+provider: none
+create_remote: false

@@ -1,9 +1,5 @@
-// Command modulebump increments module.yaml versions. Usage:
-//
-//	modulebump <module> <patch|minor|major>   # bump one module
-//	modulebump --auto [level]                 # patch-bump every changed-but-unbumped module
-//
-// Not part of the keel binary.
+// Command modulebump patch-bumps the version of every changed module that is
+// missing a bump, used by the `task modules:bump` workflow.
 package main
 
 import (

@@ -1,0 +1,53 @@
+site_name: keel
+site_description: Scaffold a new git repository from composable template modules.
+site_url: https://romanagaltsev.github.io/keel/
+repo_url: https://github.com/RomanAgaltsev/keel
+repo_name: RomanAgaltsev/keel
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - scheme: default
+      primary: teal
+      toggle: { icon: material/weather-night, name: Switch to dark mode }
+    - scheme: slate
+      primary: teal
+      toggle: { icon: material/weather-sunny, name: Switch to light mode }
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed: { alternate_style: true }
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Install: getting-started/install.md
+      - Quick start: getting-started/quickstart.md
+      - Your first repo: getting-started/first-repo.md
+  - Guides:
+      - Recipes: guides/recipes.md
+      - Answers files & CI: guides/answers-and-ci.md
+      - Repo states: guides/repo-states.md
+      - Updating a repo: guides/updating.md
+      - Providers: guides/providers.md
+      - Configuration: guides/config.md
+  - Authoring:
+      - Modules: authoring/modules.md
+      - External modules: authoring/external-modules.md
+      - Recipes: authoring/recipes.md
+  - Reference:
+      - CLI: reference/cli.md
+      - Module catalog: reference/module-catalog.md
+      - Lockfile: reference/lockfile.md
+      - Manifest schema: reference/manifest-schema.md
+  - What you get: showcase.md

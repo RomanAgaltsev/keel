@@ -14,6 +14,8 @@ release config, all rendered from your answers. It then initializes git, writes
 the first commit, and (optionally) creates the remote on GitHub and pushes —
 in one command.
 
+📖 **Documentation:** https://romanagaltsev.github.io/keel/
+
 ```bash
 keel new --recipe go-service
 ```
@@ -78,6 +80,9 @@ keel new --recipe go-service --answers answers.yaml --no-input
 keel new --recipe rust-service
 ```
 
+Ready-to-run answers files, a custom recipe, and an example external module live
+in [`examples/`](examples/).
+
 An answers file mirrors the question IDs:
 
 ```yaml
@@ -101,6 +106,9 @@ create_remote: true
 | `keel list` | List the available recipes and modules. |
 | `keel config` | Manage keel's user config (`get` / `set` / `list`). |
 | `keel version` | Print version, commit, and build date. |
+| `keel outdated` | Report which of a repo's keel modules have newer versions available. |
+| `keel update` | Re-apply evolved module templates to an existing repo (hash-aware overlay; user edits are preserved as `.keel-new`). |
+
 
 ### `keel new` flags
 
@@ -113,6 +121,20 @@ create_remote: true
 | `--remote-url` | — | Wire/clone an existing remote instead of creating one. |
 | `--overwrite` | `false` | Overwrite existing files when overlaying onto a tree. |
 | `--dry-run` | `false` | Print the plan; touch neither disk nor network. |
+
+### Updating a repo
+
+`keel update` re-renders a repo's modules at their current template versions and
+overlays the result, using the per-file hashes recorded in `.scaffold.lock`:
+
+- An untouched file is updated in place.
+- A file you edited is left alone; the new render is written alongside as
+  `<path>.keel-new` for you to merge. `--overwrite` replaces it instead.
+- `--dry-run` previews the classification; `--reconfigure` re-asks the questions;
+  `--commit` makes a single `chore: keel update` commit of keel's own changes.
+
+`keel outdated` reports, without changing anything, which modules have a newer
+version available.
 
 ## How it works
 
@@ -216,16 +238,22 @@ Two recipes compose these into production-ready services:
 ## Creating the remote
 
 When `create_remote` is true and no `--remote-url` is given, keel creates the
-repository on GitHub via the REST API. Credentials come from the environment —
-they are never written to disk:
+repository on the provider named by the `provider` answer
+(`github`, `gitlab`, `bitbucket`, `sourcecraft`, or `none`) via its REST API.
+Credentials always come from the environment — they are never written to disk:
 
-| Variable | Purpose |
-|----------|---------|
-| `KEEL_GITHUB_TOKEN` (or `GITHUB_TOKEN`) | API token used to create/inspect the repo |
-| `KEEL_GITHUB_OWNER` | Repo owner; otherwise derived from the module path (`github.com/<owner>/<repo>`) |
+| Provider | Token env (in priority order) | Owner override | Base-URL override |
+|----------|-------------------------------|----------------|-------------------|
+| `github` | `KEEL_GITHUB_TOKEN`, `GITHUB_TOKEN` | `KEEL_GITHUB_OWNER` | `KEEL_GITHUB_URL` |
+| `gitlab` | `KEEL_GITLAB_TOKEN`, `GITLAB_TOKEN` | `KEEL_GITLAB_OWNER` | `KEEL_GITLAB_URL` |
+| `bitbucket` | `KEEL_BITBUCKET_TOKEN`, `BITBUCKET_TOKEN` | `KEEL_BITBUCKET_OWNER` | `KEEL_BITBUCKET_URL` |
+| `sourcecraft` | `KEEL_SOURCECRAFT_TOKEN`, `SOURCECRAFT_TOKEN` | `KEEL_SOURCECRAFT_OWNER` | `KEEL_SOURCECRAFT_URL` |
 
-Set `provider: none` (or answer accordingly) to scaffold a purely local
-repository.
+The owner defaults to the namespace in your `module_path`
+(`gitlab.com/group/subgroup/repo` → `group/subgroup`; `github.com/owner/repo` →
+`owner`), overridable per provider with the override variable above. Set
+`provider: none` to scaffold a purely local repository.
+
 
 ## Configuration
 

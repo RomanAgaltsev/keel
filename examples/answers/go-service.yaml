@@ -1,0 +1,16 @@
+# Full Go service. Run:
+#   keel new --recipe go-service --answers examples/answers/go-service.yaml --no-input
+repo_name: demo-go
+description: A demo Go service scaffolded by keel
+module_path: github.com/you/demo-go
+author_name: Your Name
+author_email: you@example.com
+license: MIT
+visibility: public
+provider: github
+create_remote: true
+# go-service module questions (shown with their defaults):
+dep_bot: renovate # dependabot | renovate | none
+enable_codeql: true
+enable_govulncheck: true
+enable_codecov: false

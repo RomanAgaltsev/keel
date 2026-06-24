@@ -92,11 +92,12 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 		target = ans.String("repo_name")
 	}
 
-	// Provider selection.
+	// Provider selection. A dry-run touches neither disk nor network, so it never
+	// asks the provider — skip resolving it (and demanding its token) entirely.
 	createRemote := ans.Bool("create_remote")
 	providerName := ans.String("provider")
 	var p provider.Provider
-	if createRemote && f.remoteURL == "" {
+	if createRemote && f.remoteURL == "" && !f.dryRun {
 		var err error
 		p, err = provider.Resolve(providerName, ans.String("module_path"))
 		if err != nil {

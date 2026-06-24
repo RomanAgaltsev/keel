@@ -1,0 +1,16 @@
+# Full Rust crate. Run:
+#   keel new --recipe rust-service --answers examples/answers/rust-service.yaml --no-input
+repo_name: demo-rs
+description: A demo Rust service scaffolded by keel
+module_path: github.com/you/demo-rs
+author_name: Your Name
+author_email: you@example.com
+license: MIT
+visibility: public
+provider: github
+create_remote: true
+# rust-service module questions (shown with their defaults):
+dep_bot: renovate # dependabot | renovate | none
+enable_cargo_audit: true
+enable_cargo_deny: true
+enable_codecov: false

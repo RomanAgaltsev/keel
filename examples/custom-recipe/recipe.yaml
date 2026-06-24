@@ -1,0 +1,14 @@
+# A user-defined recipe: a leaner Go composition than the builtin go-service
+# (no security/dep-bots/release/spell), plus a local external module.
+#   keel new --recipe examples/custom-recipe/recipe.yaml \
+#     --answers examples/answers/local-only.yaml --no-input
+name: go-service-lite
+language: go
+modules:
+  - base-layout
+  - go-mod
+  - taskfile-go
+  - lint-go
+  - test-go
+  - name: editorconfig
+    source: { dir: ../external-module } # relative to this recipe file
