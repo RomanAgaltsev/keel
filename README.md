@@ -14,6 +14,8 @@ release config, all rendered from your answers. It then initializes git, writes
 the first commit, and (optionally) creates the remote on GitHub and pushes —
 in one command.
 
+📖 **Documentation:** https://romanagaltsev.github.io/keel/
+
 ```bash
 keel new --recipe go-service
 ```

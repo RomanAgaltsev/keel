@@ -1,0 +1,21 @@
+# keel
+
+> Scaffold a new git repository from composable template modules, then optionally
+> create and push the remote — one self-contained Go binary.
+
+## Commands
+- keel new: scaffold a repo from a recipe (interactive or --answers/--no-input).
+- keel update: re-apply evolved module templates to an existing repo.
+- keel outdated: report modules with newer versions.
+- keel list / config / version.
+
+## Concepts
+- Recipe: a named composition of modules (go-service, rust-service, or a user file).
+- Module: module.yaml manifest + templates/ tree; questions + files (with when-conditions).
+- Providers: github, gitlab, bitbucket, sourcecraft (tokens from env), or none.
+- .scaffold.lock records recipe/modules/answers + per-file hashes for keel update.
+
+## Docs
+- Site: https://romanagaltsev.github.io/keel/
+- Repo: https://github.com/RomanAgaltsev/keel
+- Examples: https://github.com/RomanAgaltsev/keel/tree/main/examples

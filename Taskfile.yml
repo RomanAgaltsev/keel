@@ -105,6 +105,11 @@ tasks:
     cmds:
       - go test -race -covermode=atomic -coverprofile=coverage.out ./...
 
+  docs:
+    desc: serve the docs site locally (requires `pip install mkdocs-material`)
+    cmds:
+      - mkdocs serve
+
   ci:
     desc: full local gate (what CI runs)
     cmds:
