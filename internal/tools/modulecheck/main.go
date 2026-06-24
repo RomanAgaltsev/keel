@@ -1,5 +1,5 @@
-// Command modulecheck fails id any module changed in a diff (vs a base ref)
-// without a version bump in its module.yaml. Not part of the keel binary.
+// Command modulecheck fails CI when a changed module lacks a module.yaml version
+// bump, comparing the working tree against a base git ref.
 package main
 
 import (

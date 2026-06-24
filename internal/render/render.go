@@ -1,3 +1,6 @@
+// Package render expands a recipe's modules into a set of destination files,
+// applying text/template rendering and optional when-conditions, and guards
+// every destination against escaping the target before anything is written.
 package render
 
 import (
