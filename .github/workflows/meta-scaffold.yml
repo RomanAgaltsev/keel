@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with: { go-version-file: go.mod }
-      - uses: arduino/setup-task@v2
+      - uses: arduino/setup-task@v3
         with: { version: 3.x, repo-token: "${{ secrets.GITHUB_TOKEN }}" }
       - run: task build
       - run: ./bin/keel new --no-input --answers testdata/meta/answers.yaml --target /tmp/metademo
