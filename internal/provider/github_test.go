@@ -37,12 +37,18 @@ func TestGitHubRepoExists(t *testing.T) {
 	require.False(t, exists)
 }
 
-func TestGitHubCreateRepo(t *testing.T) {
+func TestGitHubCreateRepoUnderTheTokenUser(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/user/repos", r.URL.Path)
 		require.Equal(t, "Bearer tok", r.Header.Get("Authorization"))
-		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"clone_url":"https://h/me/new.git","html_url":"https://h/me/new"}`))
+		switch r.URL.Path {
+		case "/user":
+			_, _ = w.Write([]byte(`{"login":"me"}`))
+		case "/user/repos":
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"clone_url":"https://h/me/new.git","html_url":"https://h/me/new"}`))
+		default:
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
 	}))
 	defer srv.Close()
 
@@ -50,6 +56,78 @@ func TestGitHubCreateRepo(t *testing.T) {
 	repo, err := gh.CreateRepo(context.Background(), provider.RepoSpec{Name: "new", Private: true})
 	require.NoError(t, err)
 	require.Equal(t, "https://h/me/new.git", repo.CloneURL)
+}
+
+// TestGitHubCreateRepoUnderAnOrg is the regression test for the bug this fixes:
+// creating with owner set to an organization posted to /user/repos, so the repo
+// landed in the token user's namespace while the existence check kept looking at
+// the org — reporting "already exists" on the second run for a repo the check
+// had just said was missing.
+func TestGitHubCreateRepoUnderAnOrg(t *testing.T) {
+	var createPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user":
+			_, _ = w.Write([]byte(`{"login":"token-user"}`))
+		default:
+			createPath = r.URL.Path
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"clone_url":"https://h/my-org/widget.git","html_url":"https://h/my-org/widget"}`))
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "my-org", provider.WithBaseURL(srv.URL))
+	repo, err := gh.CreateRepo(context.Background(), provider.RepoSpec{Name: "widget"})
+	require.NoError(t, err)
+	require.Equal(t, "/orgs/my-org/repos", createPath)
+	require.Equal(t, "https://h/my-org/widget.git", repo.CloneURL)
+}
+
+// TestGitHubCreateRepoOwnerMatchIsCaseInsensitive guards the comparison itself:
+// GitHub logins are case-insensitive, so "Me" and "me" are the same namespace and
+// must not be mistaken for an org.
+func TestGitHubCreateRepoOwnerMatchIsCaseInsensitive(t *testing.T) {
+	var createPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user":
+			_, _ = w.Write([]byte(`{"login":"Me"}`))
+		default:
+			createPath = r.URL.Path
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"clone_url":"https://h/Me/new.git","html_url":"https://h/Me/new"}`))
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	_, err := gh.CreateRepo(context.Background(), provider.RepoSpec{Name: "new"})
+	require.NoError(t, err)
+	require.Equal(t, "/user/repos", createPath)
+}
+
+// TestGitHubCreateRepoFallsBackWhenUserLookupFails keeps a create working against
+// a token whose /user call is unavailable: the previous behaviour is still right
+// for the common personal-account case.
+func TestGitHubCreateRepoFallsBackWhenUserLookupFails(t *testing.T) {
+	var createPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user":
+			w.WriteHeader(http.StatusForbidden)
+		default:
+			createPath = r.URL.Path
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"clone_url":"https://h/me/new.git","html_url":"https://h/me/new"}`))
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	_, err := gh.CreateRepo(context.Background(), provider.RepoSpec{Name: "new"})
+	require.NoError(t, err)
+	require.Equal(t, "/user/repos", createPath)
 }
 
 // TestGitHubCreateRepoErrors drives CreateRepo through non-success responses to
