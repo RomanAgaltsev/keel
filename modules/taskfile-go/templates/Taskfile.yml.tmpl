@@ -6,11 +6,11 @@ vars:
   GCI_VERSION: "v0.14.0"
   GOFUMPT_VERSION: "v0.10.0"
 
-  BIN_DIR: '{{.ROOT_DIR | replace "\\" "/"}}/bin'
-  EXE_EXT: '{{if eq OS "windows"}}.exe{{end}}'
-  GOLANGCI_LINT: "{{.BIN_DIR}}/golangci-lint{{.EXE_EXT}}"
-  GCI: "{{.BIN_DIR}}/gci{{.EXE_EXT}}"
-  GOFUMPT: "{{.BIN_DIR}}/gofumpt{{.EXE_EXT}}"
+  BIN_DIR: '{{`{{.ROOT_DIR | replace "\\" "/"}}`}}/bin'
+  EXE_EXT: '{{`{{if eq OS "windows"}}.exe{{end}}`}}'
+  GOLANGCI_LINT: "{{"{{.BIN_DIR}}"}}/golangci-lint{{"{{.EXE_EXT}}"}}"
+  GCI: "{{"{{.BIN_DIR}}"}}/gci{{"{{.EXE_EXT}}"}}"
+  GOFUMPT: "{{"{{.BIN_DIR}}"}}/gofumpt{{"{{.EXE_EXT}}"}}"
 
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
@@ -20,9 +20,9 @@ vars:
     sh: date -u +%Y-%m-%dT%H:%M:%SZ
   LDFLAGS: >-
     -s -w
-    -X main.version={{.VERSION}}
-    -X main.commit={{.COMMIT}}
-    -X main.date={{.DATE}}
+    -X main.version={{"{{.VERSION}}"}}
+    -X main.commit={{"{{.COMMIT}}"}}
+    -X main.date={{"{{.DATE}}"}}
 
 tasks:
   default:
@@ -35,20 +35,20 @@ tasks:
     desc: install gofumpt and gci
     cmds:
       - echo 'Installing gofumpt...'
-      - "GOBIN={{.BIN_DIR}} go install mvdan.cc/gofumpt@{{.GOFUMPT_VERSION}}"
+      - "GOBIN={{"{{.BIN_DIR}}"}} go install mvdan.cc/gofumpt@{{"{{.GOFUMPT_VERSION}}"}}"
       - echo 'Installing gci...'
-      - "GOBIN={{.BIN_DIR}} go install github.com/daixiang0/gci@{{.GCI_VERSION}}"
+      - "GOBIN={{"{{.BIN_DIR}}"}} go install github.com/daixiang0/gci@{{"{{.GCI_VERSION}}"}}"
     status:
-      - test -f {{.GOFUMPT}}
-      - test -f {{.GCI}}
+      - test -f {{"{{.GOFUMPT}}"}}
+      - test -f {{"{{.GCI}}"}}
 
   golangci-lint:install:
     desc: install golangci-lint
     cmds:
       - echo 'Installing golangci-lint...'
-      - GOBIN={{.BIN_DIR}} go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+      - GOBIN={{"{{.BIN_DIR}}"}} go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{"{{.GOLANGCI_LINT_VERSION}}"}}
     status:
-      - test -f {{.GOLANGCI_LINT}}
+      - test -f {{"{{.GOLANGCI_LINT}}"}}
 
   setup:
     desc: install all tools
@@ -59,15 +59,15 @@ tasks:
     deps: [formatters:install]
     cmds:
       - echo 'Formatting code with gofumpt...'
-      - bash -c "find . -type f -name '*.go' -exec {{.GOFUMPT}} -extra -w {} +"
+      - bash -c "find . -type f -name '*.go' -exec {{"{{.GOFUMPT}}"}} -extra -w {} +"
       - echo 'Sorting imports with gci...'
-      - bash -c "find . -type f -name '*.go' -exec {{.GCI}} write -s standard -s default -s 'prefix(github.com/RomanAgaltsev/demo)' {} +"
+      - bash -c "find . -type f -name '*.go' -exec {{"{{.GCI}}"}} write -s standard -s default -s 'prefix({{ .module_path }})' {} +"
 
   lint:
     desc: run golangci-lint
     deps: [golangci-lint:install]
     cmds:
-      - "{{.GOLANGCI_LINT}} run --allow-parallel-runners ./... --config=.golangci.yml"
+      - "{{"{{.GOLANGCI_LINT}}"}} run --allow-parallel-runners ./... --config=.golangci.yml"
 
   vet:
     desc: go vet ./...
@@ -88,12 +88,12 @@ tasks:
     desc: update deps
     cmds:
       - echo 'Updating deps...'
-      - go mod tidy -compat={{.GO_VERSION}}
+      - go mod tidy -compat={{"{{.GO_VERSION}}"}}
 
   build:
-    desc: build demo into ./bin
+    desc: build {{ .repo_name }} into ./bin
     cmds:
-      - go build -ldflags '{{.LDFLAGS}}' -o {{.BIN_DIR}}/demo{{.EXE_EXT}} ./cmd/demo
+      - go build -ldflags '{{"{{.LDFLAGS}}"}}' -o {{"{{.BIN_DIR}}"}}/{{ .repo_name }}{{"{{.EXE_EXT}}"}} ./cmd/{{ .repo_name }}
 
   ci:
     desc: full local gate (what CI runs)
