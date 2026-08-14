@@ -14,4 +14,5 @@ modules:
     license,
     governance,
     contributing-go,
+    community-templates,
   ]

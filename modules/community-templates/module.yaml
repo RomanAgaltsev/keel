@@ -1,0 +1,13 @@
+name: community-templates
+description: Issue forms and pull-request template
+version: 1.0.0
+language: any
+files: # dest is always "." — src carries the subdir
+  - src: ".github/ISSUE_TEMPLATE/bug_report.yml.tmpl"
+    dest: "."
+  - src: ".github/ISSUE_TEMPLATE/feature_request.yml.tmpl"
+    dest: "."
+  - src: ".github/ISSUE_TEMPLATE/config.yml.tmpl"
+    dest: "."
+  - src: ".github/PULL_REQUEST_TEMPLATE.md"
+    dest: "."
