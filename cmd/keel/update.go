@@ -184,6 +184,7 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 		return err
 	}
 	printApplied(out, applied)
+	reportRemoved(out, applied)
 
 	switch {
 	case f.commit && len(applied.Conflicts) == 0:
@@ -365,6 +366,25 @@ func commitUpdate(ctx context.Context, path string, answers map[string]any, path
 		return nil
 	}
 	return repo.Commit(ctx, "chore: keel update")
+}
+
+// reportRemoved prints the files that keel no longer produces. Apply deliberately
+// leaves them on disk - deleting user files on an update is not keel's call - so
+// the report has to be actionable, or a consolidated workflow silently runs
+// alongside the four files it replaced.
+func reportRemoved(w io.Writer, a update.Applied) {
+	if len(a.Removed) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "\n%d file(s) are no longer produced by keel and were left in place:\n\n", len(a.Removed))
+	// Apply sorts these (apply.go:56); sort a copy anyway so the output is
+	// deterministic for any caller, matching printApplied.
+	removed := append([]string{}, a.Removed...)
+	sort.Strings(removed)
+	for _, p := range removed {
+		fmt.Fprintf(w, "    rm %s\n", p)
+	}
+	fmt.Fprint(w, "\nReview them, then delete the ones you no longer want.\n")
 }
 
 // printApplied prints the per-class summary, deterministically.

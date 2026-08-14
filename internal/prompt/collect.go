@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/manifest"
@@ -67,10 +68,20 @@ func Collect(qs []manifest.Question, preset answers.Answers, asker Asker) (answe
 	if err := coerceInts(qs, out); err != nil {
 		return nil, err
 	}
+	deriveYear(out)
 	if err := validate(out); err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+// deriveYear stamps the current year unless the caller already supplied one.
+// `keel update` passes the stored lock answers as the preset, so an existing
+// year survives and copyright lines do not churn on the New Year.
+func deriveYear(a answers.Answers) {
+	if _, ok := a["year"]; !ok {
+		a["year"] = time.Now().Year()
+	}
 }
 
 // askMissing fills any unanswered questions interactively (no-op when asker is nil).

@@ -16,6 +16,8 @@ func TestTestRustNoCoverage(t *testing.T) {
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "test-rust"}, answers.Answers{
 		"repo_name":      "demo",
 		"description":    "a demo service",
+		"module_path":    "github.com/acme/demo",
+		"provider":       "github",
 		"enable_codecov": false,
 	})
 	require.NoError(t, err)
@@ -31,6 +33,8 @@ func TestTestRustWithCoverage(t *testing.T) {
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "test-rust"}, answers.Answers{
 		"repo_name":      "demo",
 		"description":    "a demo service",
+		"module_path":    "github.com/acme/demo",
+		"provider":       "github",
 		"enable_codecov": true,
 	})
 	require.NoError(t, err)

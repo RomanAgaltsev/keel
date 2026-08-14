@@ -11,4 +11,8 @@ modules:
     release-rust,
     dep-bots-rust,
     spell,
+    license,
+    governance,
+    contributing-rust,
+    community-templates,
   ]

@@ -1,5 +1,6 @@
 name: meta-scaffold
 on:
+  pull_request:
   schedule: [{ cron: "0 5 * * 1" }]
   workflow_dispatch:
 permissions:
@@ -19,5 +20,7 @@ jobs:
         working-directory: /tmp/metademo
         run: |
           go mod tidy
-          task tools
+          task setup
           task ci
+          task build
+          ./bin/metademo

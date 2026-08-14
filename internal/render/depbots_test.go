@@ -14,7 +14,7 @@ import (
 
 func baseDepBotsAnswers(bot string) answers.Answers {
 	return answers.Answers{
-		"repo_name": "x", "description": "d", "module_path": "github.com/x/x", "dep_bot": bot,
+		"repo_name": "x", "description": "d", "module_path": "github.com/x/x", "provider": "github", "dep_bot": bot,
 	}
 }
 
@@ -40,7 +40,7 @@ func TestDepBotsDependabotHasGapNote(t *testing.T) {
 
 func TestDepBotsSelect(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
-	a := answers.Answers{"repo_name": "x", "description": "d", "module_path": "github.com/x/x", "dep_bot": "renovate"}
+	a := answers.Answers{"repo_name": "x", "description": "d", "module_path": "github.com/x/x", "provider": "github", "dep_bot": "renovate"}
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "dep-bots-go"}, a)
 	require.NoError(t, err)
 	require.Contains(t, plan.Files, "renovate.json5")

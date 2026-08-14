@@ -1,36 +1,111 @@
 version: "3"
 
 vars:
-  GO: go
-  PKG: ./...
-  BIN: "{{.ROOT_DIR}}/bin"
-  GOLANGCI_VERSION: v2.3.0
+  GO_VERSION: "1.26"
+  GOLANGCI_LINT_VERSION: "v2.12.2"
+  GCI_VERSION: "v0.14.0"
+  GOFUMPT_VERSION: "v0.10.0"
 
-env:
-  GOBIN: "{{.ROOT_DIR}}/bin"
+  BIN_DIR: '{{.ROOT_DIR | replace "\\" "/"}}/bin'
+  EXE_EXT: '{{if eq OS "windows"}}.exe{{end}}'
+  GOLANGCI_LINT: "{{.BIN_DIR}}/golangci-lint{{.EXE_EXT}}"
+  GCI: "{{.BIN_DIR}}/gci{{.EXE_EXT}}"
+  GOFUMPT: "{{.BIN_DIR}}/gofumpt{{.EXE_EXT}}"
+
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo none
+  DATE:
+    sh: date -u +%Y-%m-%dT%H:%M:%SZ
+  LDFLAGS: >-
+    -s -w
+    -X main.version={{.VERSION}}
+    -X main.commit={{.COMMIT}}
+    -X main.date={{.DATE}}
 
 tasks:
   default:
-    cmds: [task --list]
+    desc: list available tasks
+    cmds:
+      - task --list
     silent: true
-  tools:
-    desc: Install pinned dev tools into ./bin
+
+  formatters:install:
+    desc: install gofumpt and gci
     cmds:
-      - "{{.GO}} install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_VERSION}}"
-  vet:
-    cmds: ["{{.GO}} vet {{.PKG}}"]
-  test:
-    cmds: ["{{.GO}} test -race -shuffle=on {{.PKG}}"]
+      - echo 'Installing gofumpt...'
+      - "GOBIN={{.BIN_DIR}} go install mvdan.cc/gofumpt@{{.GOFUMPT_VERSION}}"
+      - echo 'Installing gci...'
+      - "GOBIN={{.BIN_DIR}} go install github.com/daixiang0/gci@{{.GCI_VERSION}}"
+    status:
+      - test -f {{.GOFUMPT}}
+      - test -f {{.GCI}}
+
+  golangci-lint:install:
+    desc: install golangci-lint
+    cmds:
+      - echo 'Installing golangci-lint...'
+      - GOBIN={{.BIN_DIR}} go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+    status:
+      - test -f {{.GOLANGCI_LINT}}
+
+  setup:
+    desc: install all tools
+    deps: [formatters:install, golangci-lint:install]
+
+  format:
+    desc: format code (gofumpt + gci)
+    deps: [formatters:install]
+    cmds:
+      - echo 'Formatting code with gofumpt...'
+      - bash -c "find . -type f -name '*.go' -exec {{.GOFUMPT}} -extra -w {} +"
+      - echo 'Sorting imports with gci...'
+      - bash -c "find . -type f -name '*.go' -exec {{.GCI}} write -s standard -s default -s 'prefix(github.com/RomanAgaltsev/demo)' {} +"
+
   lint:
-    cmds: ["{{.BIN}}/golangci-lint run {{.PKG}}"]
-  tidy:check:
+    desc: run golangci-lint
+    deps: [golangci-lint:install]
     cmds:
-      - "{{.GO}} mod tidy"
-      - git diff --exit-code -- go.mod go.sum
+      - "{{.GOLANGCI_LINT}} run --allow-parallel-runners ./... --config=.golangci.yml"
+
+  vet:
+    desc: go vet ./...
+    cmds:
+      - go vet ./...
+
+  test:
+    desc: race + shuffled tests
+    cmds:
+      - go test -race -shuffle=on ./...
+
+  cover:
+    desc: coverage profile
+    cmds:
+      - go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+  deps:update:
+    desc: update deps
+    cmds:
+      - echo 'Updating deps...'
+      - go mod tidy -compat={{.GO_VERSION}}
+
+  build:
+    desc: build demo into ./bin
+    cmds:
+      - go build -ldflags '{{.LDFLAGS}}' -o {{.BIN_DIR}}/demo{{.EXE_EXT}} ./cmd/demo
+
   ci:
-    desc: full local gate
+    desc: full local gate (what CI runs)
     cmds:
-      - task: tidy:check
+      - task: deps:update
       - task: vet
       - task: lint
       - task: test
+
+  keel:outdated:
+    desc: report modules and pinned tools this repo has drifted behind
+    cmds: ["keel outdated"]
+  keel:update:
+    desc: re-apply scaffold templates (writes files — review the diff)
+    cmds: ["keel update"]

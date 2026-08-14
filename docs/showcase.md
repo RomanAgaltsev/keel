@@ -8,28 +8,45 @@ honest against keel's golden fixture at
 ```text
 demo/
 ├── .github/
-│   ├── dependabot.yml
-│   └── workflows/
-│       ├── actionlint.yml
-│       ├── codeql.yml
-│       ├── dependency-review.yml
-│       ├── govulncheck.yml
-│       ├── lint.yml
-│       ├── release.yml
-│       ├── test.yml
-│       └── typos.yml
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.yml
+│   │   ├── config.yml
+│   │   └── feature_request.yml
+│   ├── codeql/
+│   │   └── codeql-config.yml
+│   ├── workflows/
+│   │   ├── lint.yml
+│   │   ├── pr-title.yml
+│   │   ├── release.yml
+│   │   ├── security.yml
+│   │   ├── test.yml
+│   │   └── typos.yml
+│   ├── CODEOWNERS
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── dependabot.yml
+├── cmd/
+│   └── demo/
+│       └── main.go
+├── .editorconfig
 ├── .gitignore
 ├── .golangci.yml
 ├── .goreleaser.yaml
 ├── .release-please-manifest.json
 ├── .scaffold.lock
 ├── .typos.toml
+├── CONTRIBUTING.md
+├── LICENSE
 ├── README.md
+├── SECURITY.md
 ├── Taskfile.yml
+├── codecov.yml
 ├── go.mod
-├── main.go
 └── release-please-config.json
 ```
+
+`CODEOWNERS` appears when you answer the `code_owner` question; `codecov.yml` and
+the Codecov upload step when you enable `enable_codecov`; `codeql-config.yml` when
+you enable CodeQL.
 
 ## The headline files
 
@@ -38,8 +55,14 @@ demo/
 - **`.golangci.yml`** — golangci-lint v2 configuration driving the `lint`
   workflow.
 - **`.github/workflows/`** — the full CI surface: `lint`, `test` (race +
-  coverage), `codeql` / `govulncheck` / `dependency-review` security scans,
-  `actionlint` and `typos` checks, and the `release` pipeline.
+  coverage), one `security.yml` carrying the `codeql` / `govulncheck` /
+  `dependency-review` / `actionlint` jobs, the `typos` check, the `pr-title`
+  conventional-commit gate, and the `release` pipeline.
+- **`cmd/<name>/main.go`** — the entrypoint, with `version` / `commit` / `date`
+  vars the Taskfile and GoReleaser inject through `-ldflags`.
+- **`LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS`, issue forms and a
+  PR template** — the governance surface a public repo needs, rendered from your
+  answers instead of copied by hand.
 - **`.scaffold.lock`** — the record of recipe, modules, versions, answers, and
   per-file hashes that powers [`keel update`](guides/updating.md). See
   [Lockfile](reference/lockfile.md).

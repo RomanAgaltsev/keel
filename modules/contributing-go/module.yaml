@@ -1,0 +1,7 @@
+name: contributing-go
+description: Contributing guide for a Go repo
+version: 1.2.0
+language: go
+files:
+  - src: "CONTRIBUTING.md.tmpl"
+    dest: "."

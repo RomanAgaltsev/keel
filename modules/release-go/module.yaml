@@ -1,14 +1,16 @@
 name: release-go
-description: release-please + GoReleaser release pipeline
-version: 1.0.0
+description: release-please + GoReleaser release pipeline with a conventional-commit gate
+version: 2.0.0
 language: go
 requires: [base-layout]
-files: # dest is always "." — src carries the subdir (see Task 5 note)
-  - src: ".goreleaser.yaml"
+files: # dest is always "." — src carries the subdir
+  - src: ".goreleaser.yaml.tmpl"
     dest: "."
   - src: "release-please-config.json"
     dest: "."
   - src: ".release-please-manifest.json"
     dest: "."
   - src: ".github/workflows/release.yml"
+    dest: "."
+  - src: ".github/workflows/pr-title.yml"
     dest: "."

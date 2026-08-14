@@ -16,6 +16,8 @@ func TestLintRustRenders(t *testing.T) {
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "lint-rust"}, answers.Answers{
 		"repo_name":   "demo",
 		"description": "a demo service",
+		"module_path": "github.com/acme/demo",
+		"provider":    "github",
 	})
 	require.NoError(t, err)
 
@@ -24,5 +26,5 @@ func TestLintRustRenders(t *testing.T) {
 	wf := plan.Files[".github/workflows/lint.yml"]
 	require.Contains(t, wf, "cargo fmt --all -- --check")
 	require.Contains(t, wf, "cargo clippy --all-targets --all-features -- -D warnings")
-	require.Contains(t, wf, "actions/checkout@v5")
+	require.Contains(t, wf, "actions/checkout@v7")
 }

@@ -1,0 +1,12 @@
+blank_issues_enabled: false
+{{ if eq .provider "github" -}}
+contact_links:
+  - name: Security report
+    url: https://{{ .module_path }}/security/advisories/new
+    about: Report security vulnerabilities privately.
+{{- else -}}
+contact_links:
+  - name: Security report
+    url: mailto:{{ .author_email }}
+    about: Report security vulnerabilities privately by email.
+{{- end }}

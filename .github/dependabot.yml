@@ -22,3 +22,27 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+
+  # The embedded module templates ship workflows to every scaffolded repo.
+  # dependabot's github-actions ecosystem only scans the directories it is told
+  # about, so a template pin sat at actions/checkout@v5 for months while this
+  # repo's own workflows moved to @v7.
+  - package-ecosystem: github-actions
+    directories:
+      - "/modules/base-layout/templates"
+      - "/modules/lint-go/templates"
+      - "/modules/test-go/templates"
+      - "/modules/security-go/templates"
+      - "/modules/release-go/templates"
+      - "/modules/spell/templates"
+      - "/modules/lint-rust/templates"
+      - "/modules/test-rust/templates"
+      - "/modules/security-rust/templates"
+      - "/modules/release-rust/templates"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "ci", "templates"]
+    groups:
+      template-actions:
+        patterns: ["*"]

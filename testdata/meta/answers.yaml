@@ -9,5 +9,5 @@ provider: none
 create_remote: false
 enable_codeql: true
 enable_govulncheck: true
-enable_codecov: false
+enable_codecov: true
 dep_bot: dependabot

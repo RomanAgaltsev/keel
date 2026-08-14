@@ -11,4 +11,8 @@ modules:
     dep-bots-go,
     release-go,
     spell,
+    license,
+    governance,
+    contributing-go,
+    community-templates,
   ]

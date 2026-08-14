@@ -27,7 +27,7 @@ func baseOpts(target string, p provider.Provider) scaffold.Options {
 		Provider:     p,
 		CreateRemote: true,
 		Answers: answers.Answers{
-			"repo_name": "demo", "description": "d", "module_path": "github.com/x/demo",
+			"repo_name": "demo", "description": "d", "module_path": "github.com/x/demo", "provider": "github",
 			"author_name": "Roman", "author_email": "roman-agalcev@yandex.ru",
 		},
 	}

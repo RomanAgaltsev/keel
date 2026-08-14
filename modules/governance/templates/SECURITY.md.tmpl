@@ -1,0 +1,24 @@
+# Security Policy
+
+## Supported Versions
+
+`{{ .repo_name }}` is pre-1.0. Only the latest `v0.x` release line receives security fixes.
+
+| Version       | Supported |
+| ------------- | --------- |
+| latest `v0.x` | ✅        |
+| older         | ❌        |
+
+## Reporting a Vulnerability
+
+{{ if eq .provider "github" -}}
+Please report security issues privately via GitHub's
+[private vulnerability reporting](https://{{ .module_path }}/security/advisories/new)
+("Report a vulnerability" in the **Security** tab). Do not open public issues for security
+reports.
+{{- else -}}
+Please report security issues privately by email to {{ .author_email }}.
+Do not open public issues for security reports.
+{{- end }}
+
+We aim to acknowledge reports within 5 business days.
