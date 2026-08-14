@@ -35,3 +35,24 @@ func TestNoStaleActionPins(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkflowsDoNotPinToolVersions(t *testing.T) {
+	// The Taskfile owns tool versions. A workflow that pins golangci-lint too
+	// is a second source of truth, and the two drifted by nine minor versions
+	// before this test existed.
+	for _, rec := range []string{"go-service", "rust-service"} {
+		plan := recipePlan(t, rec)
+		for path, content := range plan.Files {
+			if !strings.HasPrefix(path, ".github/workflows/") {
+				continue
+			}
+			require.NotContains(t, content, "golangci-lint@", "%s/%s pins a tool the Taskfile owns", rec, path)
+			require.NotContains(t, content, "GOLANGCI", "%s/%s pins a tool the Taskfile owns", rec, path)
+		}
+	}
+}
+
+func TestTaskfileAndLintAgreeOnGolangciVersion(t *testing.T) {
+	plan := recipePlan(t, "go-service")
+	require.Contains(t, plan.Files["Taskfile.yml"], "v2.12.2")
+}
