@@ -59,11 +59,11 @@ keel outdated
 — and nothing else. It writes no files. Use it to decide whether an update is
 worth running.
 
-## Upgrading a repo scaffolded before 1.8.0
+## Upgrading a repo scaffolded before 2.0.0
 
-1.8.0 actualizes the Go discipline modules against what the vault's shipped repos
-actually run. Four of the changes are breaking, and `keel update` cannot make any
-of them silently — it never deletes a file it once wrote.
+2.0.0 brings the Go discipline modules up to date with current tooling. Four of
+the changes are breaking, and `keel update` cannot make any of them silently — it
+never deletes a file it once wrote.
 
 - **The entrypoint moved to `cmd/<name>/main.go`.** `go-mod` emits the new path;
   the old root `main.go` is reported as no longer produced. Move your code across,
