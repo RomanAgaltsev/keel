@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/RomanAgaltsev/keel/compare/v2.0.0...v2.0.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **provider:** create org repositories under the org, not the token user ([#38](https://github.com/RomanAgaltsev/keel/issues/38)) ([ed1773a](https://github.com/RomanAgaltsev/keel/commit/ed1773a1c98f4bd32b53984b59020f0af51f3ed4))
+
 ## [2.0.0](https://github.com/RomanAgaltsev/keel/compare/v1.7.1...v2.0.0) (2026-08-14)
 
 
