@@ -2,6 +2,7 @@ package prompt_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -101,4 +102,18 @@ func TestCollectInteractiveAsksMissing(t *testing.T) {
 	got, err := prompt.Collect(coreAndModule(), preset, asker)
 	require.NoError(t, err)
 	require.Equal(t, "from wizard", got["description"])
+}
+
+func TestCollectInjectsYear(t *testing.T) {
+	got, err := prompt.Collect(nil, answers.Answers{}, nil)
+	require.NoError(t, err)
+	require.Equal(t, time.Now().Year(), got["year"])
+}
+
+func TestCollectPreservesPresetYear(t *testing.T) {
+	// A lock written in 2019 must re-render with 2019, not the current year —
+	// otherwise every January `keel update` rewrites LICENSE for no reason.
+	got, err := prompt.Collect(nil, answers.Answers{"year": 2019}, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2019, got["year"])
 }
