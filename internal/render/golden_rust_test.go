@@ -29,7 +29,7 @@ func TestRustServiceGolden(t *testing.T) {
 		"year":               2026,
 		"provider":           "github",
 		"code_owner":         "RomanAgaltsev",
-		"enable_codecov":     false,
+		"enable_codecov":     true,
 		"enable_cargo_audit": true,
 		"enable_cargo_deny":  true,
 		"dep_bot":            "dependabot",

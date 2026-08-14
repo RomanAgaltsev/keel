@@ -35,7 +35,7 @@ func TestGoServiceGolden(t *testing.T) {
 		"code_owner":         "RomanAgaltsev",
 		"enable_codeql":      true,
 		"enable_govulncheck": true,
-		"enable_codecov":     false,
+		"enable_codecov":     true,
 		"dep_bot":            "dependabot",
 	})
 	require.NoError(t, err)
