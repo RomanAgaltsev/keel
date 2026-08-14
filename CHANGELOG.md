@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/RomanAgaltsev/keel/compare/v1.7.1...v2.0.0) (2026-08-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* the entrypoint moves from ./main.go to ./cmd/<name>/main.go.
+
+### Features
+
+* repo-health modules and discipline actualization ([#35](https://github.com/RomanAgaltsev/keel/issues/35)) ([7d8d99d](https://github.com/RomanAgaltsev/keel/commit/7d8d99d9b32e2d21876fee371a5854e2d012ba08))
+
 ## [1.7.1](https://github.com/RomanAgaltsev/keel/compare/v1.7.0...v1.7.1) (2026-06-23)
 
 
