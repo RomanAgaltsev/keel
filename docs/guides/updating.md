@@ -58,3 +58,43 @@ keel outdated
 `keel outdated` reports which of a repo's modules have a newer version available
 — and nothing else. It writes no files. Use it to decide whether an update is
 worth running.
+
+## Upgrading a repo scaffolded before 1.8.0
+
+1.8.0 actualizes the Go discipline modules against what the vault's shipped repos
+actually run. Four of the changes are breaking, and `keel update` cannot make any
+of them silently — it never deletes a file it once wrote.
+
+- **The entrypoint moved to `cmd/<name>/main.go`.** `go-mod` emits the new path;
+  the old root `main.go` is reported as no longer produced. Move your code across,
+  then delete it. `Taskfile.yml` and `.goreleaser.yaml` both target `./cmd/<name>`
+  now, so a release built before you move will produce nothing.
+- **`goimports` is replaced by `gci`.** `.golangci.yml` now enables `gofumpt` +
+  `gci` as formatters, with `gci` sections seeded to `standard`, `default` and
+  `prefix(<your module path>)`. Run `task format` once and commit the import
+  reordering as its own commit.
+- **`depguard` now gates dependencies.** The allow-list starts at `$gostd` plus
+  your own module path, so the first `go get` fails lint until you add the new
+  dependency to `linters.settings.depguard.rules.Main.allow`. That is deliberate —
+  it makes a new dependency a decision rather than an accident. Existing
+  third-party imports must be added in the upgrade commit.
+- **Four security workflows became one.** `codeql.yml`, `govulncheck.yml`,
+  `dependency-review.yml` and `actionlint.yml` are replaced by `security.yml`.
+  `keel update` prints the exact commands:
+
+  ```text
+  5 file(s) are no longer produced by keel and were left in place:
+
+      rm .github/workflows/actionlint.yml
+      rm .github/workflows/codeql.yml
+      rm .github/workflows/dependency-review.yml
+      rm .github/workflows/govulncheck.yml
+      rm main.go
+  ```
+
+  Until you run them the old workflows keep firing alongside the new one, on their
+  old action pins.
+
+If branch protection required the old checks by name, update it: the job names are
+now `lint`, `test`, `typos`, `pr-title`, `actionlint`, `dependency-review`, plus
+`codeql` and `govulncheck` when enabled.

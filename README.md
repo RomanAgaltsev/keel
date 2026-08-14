@@ -20,11 +20,13 @@ in one command.
 keel new --recipe go-service
 ```
 
-That one command, answered interactively, produces a Go service with a module
-layout, a `Taskfile`, golangci-lint v2, a race/coverage test workflow, CodeQL +
-govulncheck + dependency-review security scans, Dependabot/Renovate, a
-release-please + GoReleaser pipeline, and a typos spell-check — committed and, if
-you asked for it, live on GitHub.
+That one command, answered interactively, produces a Go service with a
+`cmd/<name>` layout, a `Taskfile`, golangci-lint v2, a race/coverage test
+workflow, CodeQL + govulncheck + dependency-review security scans,
+Dependabot/Renovate, a release-please + GoReleaser pipeline, a typos
+spell-check, and the governance files a public repo needs — `LICENSE`,
+`CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS`, issue forms and a PR template —
+committed and, if you asked for it, live on GitHub.
 
 Swap the recipe for `rust-service` and the same command produces a Cargo crate
 with the equivalent Rust toolchain — rustfmt + clippy, a `cargo nextest` matrix,
@@ -197,14 +199,14 @@ A recipe is just a named composition of modules:
 # recipes/go-service.yaml
 name: go-service
 language: go
-modules: [base-layout, go-mod, taskfile-go, lint-go, test-go, security-go, dep-bots-go, release-go, spell]
+modules: [base-layout, go-mod, taskfile-go, lint-go, test-go, security-go, dep-bots-go, release-go, spell, license, governance, contributing-go, community-templates]
 ```
 
 ```yaml
 # recipes/rust-service.yaml
 name: rust-service
 language: rust
-modules: [base-layout, cargo-mod, taskfile-rust, lint-rust, test-rust, security-rust, release-rust, dep-bots-rust, spell]
+modules: [base-layout, cargo-mod, taskfile-rust, lint-rust, test-rust, security-rust, release-rust, dep-bots-rust, spell, license, governance, contributing-rust, community-templates]
 ```
 
 ## Built-in modules
@@ -217,18 +219,22 @@ language-agnostic and shared by both recipes.
 |--------|------|-------------|
 | `base-layout` | any | README and `.gitignore` common to every repo |
 | `spell` | any | Spell-check with crate-ci/typos |
-| `go-mod` | go | Minimal Go module and entrypoint |
+| `go-mod` | go | Go module and `cmd/<name>` entrypoint |
 | `cargo-mod` | rust | Minimal Rust crate (`Cargo.toml` + entrypoint) |
 | `taskfile-go` / `taskfile-rust` | go / rust | Taskfile with project-local `bin/` tooling and a CI gate |
 | `lint-go` | go | golangci-lint v2 config + lint workflow |
 | `lint-rust` | rust | rustfmt + clippy config and lint workflow |
-| `test-go` | go | race/shuffle test workflow with coverage |
+| `test-go` | go | race/shuffle test workflow with coverage and optional Codecov upload |
 | `test-rust` | rust | `cargo nextest` matrix with optional Codecov coverage |
-| `security-go` | go | CodeQL, govulncheck, dependency-review, workflow linting |
+| `security-go` | go | One `security.yml`: CodeQL, govulncheck, dependency-review, workflow linting |
 | `security-rust` | rust | cargo-audit + cargo-deny, dependency-review, workflow linting |
 | `dep-bots-go` / `dep-bots-rust` | go / rust | Dependabot or Renovate dependency-update config |
-| `release-go` | go | release-please + GoReleaser release pipeline |
-| `release-rust` | rust | release-plz (version/changelog) + cargo-dist (binaries) |
+| `release-go` | go | release-please + GoReleaser release pipeline with a conventional-commit gate |
+| `release-rust` | rust | release-plz (version/changelog) + cargo-dist (binaries) with a conventional-commit gate |
+| `license` | any | `LICENSE` for the chosen license |
+| `governance` | any | `SECURITY.md`, `.github/CODEOWNERS`, `.editorconfig` |
+| `contributing-go` / `contributing-rust` | go / rust | `CONTRIBUTING.md` for the language |
+| `community-templates` | any | Issue forms and pull-request template |
 
 Two recipes compose these into production-ready services:
 

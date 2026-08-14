@@ -11,8 +11,8 @@ questions, and renders the result.
 
 | Recipe | Language | Modules |
 |--------|----------|---------|
-| `go-service` | go | `base-layout`, `go-mod`, `taskfile-go`, `lint-go`, `test-go`, `security-go`, `dep-bots-go`, `release-go`, `spell` |
-| `rust-service` | rust | `base-layout`, `cargo-mod`, `taskfile-rust`, `lint-rust`, `test-rust`, `security-rust`, `release-rust`, `dep-bots-rust`, `spell` |
+| `go-service` | go | `base-layout`, `go-mod`, `taskfile-go`, `lint-go`, `test-go`, `security-go`, `dep-bots-go`, `release-go`, `spell`, `license`, `governance`, `contributing-go`, `community-templates` |
+| `rust-service` | rust | `base-layout`, `cargo-mod`, `taskfile-rust`, `lint-rust`, `test-rust`, `security-rust`, `release-rust`, `dep-bots-rust`, `spell`, `license`, `governance`, `contributing-rust`, `community-templates` |
 
 `go-service` is the default — `keel new` with no `--recipe` uses it. Both share
 the language-agnostic `base-layout` and `spell` modules; everything else is the

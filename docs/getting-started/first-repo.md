@@ -11,7 +11,8 @@ step by step:
 
 1. **Resolve the recipe.** `keel` looks up `go-service`, expands it into its
    ordered list of modules (`base-layout`, `go-mod`, `taskfile-go`, `lint-go`,
-   `test-go`, `security-go`, `dep-bots-go`, `release-go`, `spell`), and loads
+   `test-go`, `security-go`, `dep-bots-go`, `release-go`, `spell`, `license`,
+   `governance`, `contributing-go`, `community-templates`), and loads
    each module's manifest.
 
 2. **Ask the questions.** The built-in core questions (repo name, module path,
@@ -47,10 +48,12 @@ step by step:
 
 ## What landed
 
-You now have a ready-to-push Go service: a module layout and entrypoint, a
-`Taskfile`, golangci-lint v2, a race/coverage test workflow, CodeQL +
-govulncheck + dependency-review security scans, Dependabot/Renovate, a
-release-please + GoReleaser pipeline, and a typos spell-check — all committed.
+You now have a ready-to-push Go service: a module layout with a `cmd/<name>`
+entrypoint, a `Taskfile`, golangci-lint v2, a race/coverage test workflow, CodeQL
++ govulncheck + dependency-review security scans, Dependabot/Renovate, a
+release-please + GoReleaser pipeline, a typos spell-check, and the governance
+files a public repo needs — `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
+`CODEOWNERS`, issue forms and a PR template — all committed.
 
 See **[What you get](../showcase.md)** for the full directory tree a
 `go-service` scaffold produces.

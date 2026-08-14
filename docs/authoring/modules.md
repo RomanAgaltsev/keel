@@ -84,3 +84,10 @@ surfaces immediately.
 - To ship a module *outside* the keel binary, see
   [External modules](external-modules.md).
 - To compose modules into your own recipe, see [Recipes](recipes.md).
+
+## If your module ships workflows
+
+A module whose `templates/` tree contains `.github/workflows/` needs its
+templates directory added to the `github-actions` block in keel's own
+`.github/dependabot.yml`, or its action pins will never be updated. See
+[CONTRIBUTING.md](https://github.com/RomanAgaltsev/keel/blob/main/CONTRIBUTING.md).
