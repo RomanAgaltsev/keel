@@ -51,6 +51,6 @@ These steps need repo-admin access and cannot be committed as code:
   (`Settings → Secrets and variables → Actions`).
 - [ ] **Private vulnerability reporting:** enable it under `Settings → Code security`.
 - [ ] **Branch protection** on `main`: require the pull-request checks this recipe emits —
-  `lint`, `test`, `typos`, `actionlint` and `dependency-review`, plus `codeql` and
+  `lint`, `test`, `typos`, `pr-title`, `actionlint` and `dependency-review`, plus `codeql` and
   `govulncheck` when those are enabled. Names are the **job** names in
   `.github/workflows/`; a required check that never reports blocks every pull request.

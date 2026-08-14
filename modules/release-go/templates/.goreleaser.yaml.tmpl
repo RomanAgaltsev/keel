@@ -1,10 +1,12 @@
 version: 2
 builds:
-  - env: [CGO_ENABLED=0]
+  - main: ./cmd/{{ .repo_name }}
+    binary: {{ .repo_name }}
+    env: [CGO_ENABLED=0]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     ldflags:
-      - -s -w -X main.version={{ .Version }} -X main.commit={{ .Commit }} -X main.date={{ .Date }}
+      - -s -w -X main.version={{"{{ .Version }}"}} -X main.commit={{"{{ .Commit }}"}} -X main.date={{"{{ .Date }}"}}
 archives:
   - formats: [tar.gz]
     format_overrides:

@@ -1,6 +1,8 @@
 version: 2
 builds:
-  - env: [CGO_ENABLED=0]
+  - main: ./cmd/demo
+    binary: demo
+    env: [CGO_ENABLED=0]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     ldflags:
