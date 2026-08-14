@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,6 +14,7 @@ import (
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/lock"
 	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/internal/update"
 )
 
 func TestUpdateDryRunReportsBehindModule(t *testing.T) {
@@ -299,4 +301,29 @@ func gitLog(t *testing.T, dir string) string {
 		return ""
 	}
 	return string(out)
+}
+
+func TestUpdateReportsRemovedWithDeleteCommands(t *testing.T) {
+	var buf bytes.Buffer
+	applied := update.Applied{
+		Removed: []string{".github/workflows/codeql.yml", ".github/workflows/actionlint.yml"},
+	}
+
+	reportRemoved(&buf, applied)
+
+	out := buf.String()
+	require.Contains(t, out, "no longer produced by keel")
+	// Sorted, and each one actionable as-is.
+	require.Contains(t, out, "rm .github/workflows/actionlint.yml")
+	require.Contains(t, out, "rm .github/workflows/codeql.yml")
+	require.Less(t,
+		strings.Index(out, "actionlint.yml"),
+		strings.Index(out, "codeql.yml"),
+		"removed paths must be reported in sorted order")
+}
+
+func TestUpdateSaysNothingWhenNothingRemoved(t *testing.T) {
+	var buf bytes.Buffer
+	reportRemoved(&buf, update.Applied{})
+	require.Empty(t, buf.String())
 }
