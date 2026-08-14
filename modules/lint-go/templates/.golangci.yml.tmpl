@@ -111,7 +111,7 @@ linters:
             - $all
           allow:
             - $gostd
-            - "github.com/RomanAgaltsev/demo"
+            - "{{ .module_path }}"
 
     revive:
       severity: warning
@@ -148,5 +148,5 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(github.com/RomanAgaltsev/demo)
+        - prefix({{ .module_path }})
       no-inline-comments: false
