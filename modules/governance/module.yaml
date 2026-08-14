@@ -1,0 +1,17 @@
+name: governance
+description: Security policy, code owners, editor config
+version: 1.0.0
+language: any
+questions:
+  - id: code_owner
+    prompt: "Code owner handle (blank to skip CODEOWNERS)"
+    type: string
+    default: ""
+files: # dest is always "." — src carries the subdir
+  - src: "SECURITY.md.tmpl"
+    dest: "."
+  - src: ".editorconfig"
+    dest: "."
+  - src: ".github/CODEOWNERS.tmpl"
+    dest: "."
+    when: '{{ if ne .code_owner "" }}true{{ end }}'

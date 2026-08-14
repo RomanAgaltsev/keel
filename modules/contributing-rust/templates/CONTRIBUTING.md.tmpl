@@ -1,0 +1,56 @@
+# Contributing to {{ .repo_name }}
+
+Thanks for contributing! `{{ .repo_name }}` is a Rust crate.
+
+## Prerequisites
+
+- Rust stable, via [rustup](https://rustup.rs)
+- [Task](https://taskfile.dev): `cargo install task` or see the install docs
+
+`task tools` installs the pinned dev tools (cargo-nextest, cargo-audit, cargo-deny,
+cargo-llvm-cov) into `./bin`.
+
+## Everyday commands
+
+All commands run through `Taskfile.yml` so local == CI:
+
+```bash
+task            # list available tasks
+task ci         # full local gate: fmt check, clippy, tests
+task lint       # cargo clippy --all-targets --all-features -- -D warnings
+task fmt        # cargo fmt --all
+task test       # cargo nextest run + doc tests
+task build      # cargo build --release
+```
+
+## Commit & PR conventions
+
+- We **squash-merge** PRs. The **PR title** becomes the commit on `main` and drives
+  release-plz, so it **must** be a
+  [Conventional Commit](https://www.conventionalcommits.org/): `feat: ...`, `fix: ...`,
+  `chore: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `build: ...`, `ci: ...`,
+  `perf: ...`. Scope optional: `feat(engine): ...`.
+- Breaking changes: add `!` (`feat!: ...`) or a `BREAKING CHANGE:` footer.
+- A `pr-title` check enforces the convention.
+
+## Adding a dependency
+
+`cargo add` it, then keep `deny.toml` happy — `task lint` and the `deny` check both run in
+CI, so an unvetted licence or a duplicate version fails the pull request rather than
+landing quietly.
+
+## Before opening a PR
+
+Run `task ci` and make sure it is green.
+
+## Maintainer setup (one-time)
+
+These steps need repo-admin access and cannot be committed as code:
+
+- [ ] **Codecov:** add the repo at codecov.io and set the `CODECOV_TOKEN` repo secret
+  (`Settings → Secrets and variables → Actions`).
+- [ ] **Private vulnerability reporting:** enable it under `Settings → Code security`.
+- [ ] **Branch protection** on `main`: require the pull-request checks this recipe emits —
+  `lint`, `test`, `typos`, `actionlint` and `review`, plus `audit`, `deny` and `coverage`
+  when those are enabled. Names are the **job** names in `.github/workflows/`; a required
+  check that never reports blocks every pull request.

@@ -12,4 +12,6 @@ modules:
     release-go,
     spell,
     license,
+    governance,
+    contributing-go,
   ]

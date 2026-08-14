@@ -12,4 +12,6 @@ modules:
     dep-bots-rust,
     spell,
     license,
+    governance,
+    contributing-rust,
   ]

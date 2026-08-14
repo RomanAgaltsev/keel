@@ -31,6 +31,8 @@ func TestGoServiceGolden(t *testing.T) {
 		"author_email":       "roman-agalcev@yandex.ru",
 		"license":            "MIT",
 		"year":               2026,
+		"provider":           "github",
+		"code_owner":         "RomanAgaltsev",
 		"enable_codeql":      true,
 		"enable_govulncheck": true,
 		"enable_codecov":     false,
