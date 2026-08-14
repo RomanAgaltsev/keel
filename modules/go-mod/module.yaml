@@ -1,8 +1,10 @@
 name: go-mod
-description: Minimal Go module and entrypoint
-version: 1.0.0
+description: Go module and cmd/<name> entrypoint
+version: 2.0.0
 language: go
 requires: [base-layout]
-files:
-  - src: "*"
+files: # dest is always "." — src carries the subdir
+  - src: "go.mod.tmpl"
+    dest: "."
+  - src: "cmd/{{.repo_name}}/main.go.tmpl"
     dest: "."
