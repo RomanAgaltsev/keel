@@ -26,5 +26,5 @@ func TestLintRustRenders(t *testing.T) {
 	wf := plan.Files[".github/workflows/lint.yml"]
 	require.Contains(t, wf, "cargo fmt --all -- --check")
 	require.Contains(t, wf, "cargo clippy --all-targets --all-features -- -D warnings")
-	require.Contains(t, wf, "actions/checkout@v5")
+	require.Contains(t, wf, "actions/checkout@v7")
 }

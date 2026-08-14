@@ -12,7 +12,8 @@ import (
 	"github.com/RomanAgaltsev/keel/internal/render"
 )
 
-func TestTaskfileRustRenders(t *testing.T) {
+func taskfileRust(t *testing.T) string {
+	t.Helper()
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "taskfile-rust"}, answers.Answers{
 		"repo_name":   "demo",
@@ -21,11 +22,21 @@ func TestTaskfileRustRenders(t *testing.T) {
 		"provider":    "github",
 	})
 	require.NoError(t, err)
+	return plan.Files["Taskfile.yml"]
+}
 
-	tf := plan.Files["Taskfile.yml"]
+func TestTaskfileRustRenders(t *testing.T) {
+	tf := taskfileRust(t)
 	require.Contains(t, tf, "cargo nextest run")
 	require.Contains(t, tf, "cargo clippy")
 	// Verbatim: Task's own template vars must survive keel's renderer untouched.
 	require.True(t, strings.Contains(tf, "{{.ROOT_DIR}}"), "Task vars must be preserved verbatim")
 	require.Contains(t, tf, "cargo install --root . --version")
+}
+
+func TestTaskfileRustExposesKeelTasks(t *testing.T) {
+	got := taskfileRust(t)
+	require.Contains(t, got, "keel:outdated:")
+	require.Contains(t, got, "keel:update:")
+	require.NotContains(t, taskBlock(t, got, "ci"), "keel")
 }

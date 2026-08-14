@@ -36,3 +36,10 @@ tasks:
       - task: fmt:check
       - task: lint
       - task: test
+
+  keel:outdated:
+    desc: report modules and pinned tools this repo has drifted behind
+    cmds: ["keel outdated"]
+  keel:update:
+    desc: re-apply scaffold templates (writes files — review the diff)
+    cmds: ["keel update"]
