@@ -14,7 +14,7 @@ import (
 func TestGoModEmitsCmdLayout(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"go-mod"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 	})
 	require.NoError(t, err)
 	require.Contains(t, plan.Files, "cmd/demo/main.go")
@@ -25,7 +25,7 @@ func TestGoModEmitsCmdLayout(t *testing.T) {
 func TestGoModMainIsLintClean(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"go-mod"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 	})
 	require.NoError(t, err)
 	main := plan.Files["cmd/demo/main.go"]

@@ -12,7 +12,7 @@ import (
 )
 
 func baseSecAnswers() answers.Answers {
-	return answers.Answers{"repo_name": "demo", "description": "a demo service", "enable_cargo_audit": true, "enable_cargo_deny": true}
+	return answers.Answers{"repo_name": "demo", "description": "a demo service", "module_path": "github.com/acme/demo", "provider": "github", "enable_cargo_audit": true, "enable_cargo_deny": true}
 }
 
 func TestSecurityRustAll(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 
 func TestReleaseGoReleaserVerbatim(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
-	a := answers.Answers{"repo_name": "x", "description": "d", "module_path": "github.com/x/x"}
+	a := answers.Answers{"repo_name": "x", "description": "d", "module_path": "github.com/x/x", "provider": "github"}
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "release-go"}, a)
 	require.NoError(t, err)
 	require.True(t, strings.Contains(plan.Files[".goreleaser.yaml"], "{{ .Version }}"))
@@ -23,7 +23,7 @@ func TestReleaseGoReleaserVerbatim(t *testing.T) {
 func TestReleaseGoEnforcesConventionalCommits(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "release-go"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 	})
 	require.NoError(t, err)
 	wf := plan.Files[".github/workflows/pr-title.yml"]
@@ -34,7 +34,7 @@ func TestReleaseGoEnforcesConventionalCommits(t *testing.T) {
 func TestReleaseGoBuildsTheCmdPath(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "release-go"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 	})
 	require.NoError(t, err)
 	// Task 5 moved the entrypoint; GoReleaser must follow it.
@@ -44,7 +44,7 @@ func TestReleaseGoBuildsTheCmdPath(t *testing.T) {
 func TestReleaseGoPreservesGoReleaserTemplating(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "release-go"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 	})
 	require.NoError(t, err)
 	got := plan.Files[".goreleaser.yaml"]

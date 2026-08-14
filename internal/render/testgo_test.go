@@ -15,7 +15,7 @@ func testGoPlan(t *testing.T, codecov bool) render.Plan {
 	t.Helper()
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "test-go"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 		"enable_codecov": codecov,
 	})
 	require.NoError(t, err)

@@ -15,7 +15,7 @@ func golangciConfig(t *testing.T) string {
 	t.Helper()
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "lint-go"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 	})
 	require.NoError(t, err)
 	return plan.Files[".golangci.yml"]
@@ -48,7 +48,7 @@ func TestLintGoEnablesTheFullSet(t *testing.T) {
 func TestLintWorkflowDelegatesToTask(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "lint-go"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 	})
 	require.NoError(t, err)
 	wf := plan.Files[".github/workflows/lint.yml"]

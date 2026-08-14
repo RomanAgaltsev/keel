@@ -14,7 +14,7 @@ import (
 func TestSecurityConsolidatedAndGated(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	base := answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 		"enable_codeql": false, "enable_govulncheck": true,
 	}
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "security-go"}, base)
@@ -38,7 +38,7 @@ func TestSecurityConsolidatedAndGated(t *testing.T) {
 func TestSecurityCodeQLConfigFollowsTheJob(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	on := answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 		"enable_codeql": true, "enable_govulncheck": true,
 	}
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "security-go"}, on)
@@ -53,7 +53,7 @@ func TestSecurityCodeQLConfigFollowsTheJob(t *testing.T) {
 func TestSecurityStaysValidWithEverythingGatedOff(t *testing.T) {
 	l := module.NewFSLoader(keel.BuiltinFS)
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "security-go"}, answers.Answers{
-		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
 		"enable_codeql": false, "enable_govulncheck": false,
 	})
 	require.NoError(t, err)

@@ -17,6 +17,8 @@ func TestTaskfileRustRenders(t *testing.T) {
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "taskfile-rust"}, answers.Answers{
 		"repo_name":   "demo",
 		"description": "a demo service",
+		"module_path": "github.com/acme/demo",
+		"provider":    "github",
 	})
 	require.NoError(t, err)
 
