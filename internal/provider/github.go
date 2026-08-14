@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -68,7 +69,7 @@ func (g *GitHub) RepoExists(ctx context.Context, spec RepoSpec) (bool, RemoteRep
 	})
 }
 
-// CreateRepo creates owner/name under the authenticated user.
+// CreateRepo creates the repository in owner's namespace.
 func (g *GitHub) CreateRepo(ctx context.Context, spec RepoSpec) (RemoteRepo, error) {
 	payload, err := json.Marshal(map[string]any{
 		"name": spec.Name, "description": spec.Description, "private": spec.Private,
@@ -76,8 +77,7 @@ func (g *GitHub) CreateRepo(ctx context.Context, spec RepoSpec) (RemoteRepo, err
 	if err != nil {
 		return RemoteRepo{}, fmt.Errorf("github: create %s: %w", spec.Name, err)
 	}
-	url := g.baseURL + "/user/repos"
-	resp, err := g.do(ctx, http.MethodPost, url, bytes.NewReader(payload))
+	resp, err := g.do(ctx, http.MethodPost, g.createURL(ctx), bytes.NewReader(payload))
 	if err != nil {
 		return RemoteRepo{}, fmt.Errorf("github: create %s: %w", spec.Name, err)
 	}
@@ -90,6 +90,46 @@ func (g *GitHub) CreateRepo(ctx context.Context, spec RepoSpec) (RemoteRepo, err
 		return RemoteRepo{}, err
 	}
 	return r.remote(), nil
+}
+
+// createURL returns the endpoint that creates the repository in owner's
+// namespace. POST /user/repos always creates under the token's own account, so an
+// owner that is an organization must go to /orgs/{owner}/repos instead. Getting
+// this wrong is silent and confusing: the repo lands in the token user's
+// namespace while RepoExists keeps looking at the org, so the next run's create
+// fails with "already exists" for a repo the existence check just reported
+// missing.
+func (g *GitHub) createURL(ctx context.Context) string {
+	personal := g.baseURL + "/user/repos"
+	if g.owner == "" {
+		return personal
+	}
+	login, err := g.authenticatedLogin(ctx)
+	// An unavailable lookup falls back to the personal endpoint: it is the
+	// pre-existing behaviour and the right answer for the common case.
+	if err != nil || strings.EqualFold(login, g.owner) {
+		return personal
+	}
+	return fmt.Sprintf("%s/orgs/%s/repos", g.baseURL, g.owner)
+}
+
+// authenticatedLogin returns the login of the user the token belongs to.
+func (g *GitHub) authenticatedLogin(ctx context.Context) (string, error) {
+	resp, err := g.do(ctx, http.MethodGet, g.baseURL+"/user", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("github: GET /user: %s", resp.Status)
+	}
+	var u struct {
+		Login string `json:"login"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
+		return "", err
+	}
+	return u.Login, nil
 }
 
 type ghRepo struct {
