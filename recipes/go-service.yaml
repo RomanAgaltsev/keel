@@ -11,4 +11,5 @@ modules:
     dep-bots-go,
     release-go,
     spell,
+    license,
   ]

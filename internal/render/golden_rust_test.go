@@ -26,6 +26,7 @@ func TestRustServiceGolden(t *testing.T) {
 		"author_name":        "Roman Agaltsev",
 		"author_email":       "roman-agalcev@yandex.ru",
 		"license":            "MIT",
+		"year":               2026,
 		"enable_codecov":     false,
 		"enable_cargo_audit": true,
 		"enable_cargo_deny":  true,

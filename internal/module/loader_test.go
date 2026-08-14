@@ -35,6 +35,7 @@ func TestLoaderLoadModule(t *testing.T) {
 		"security-rust",
 		"release-rust",
 		"dep-bots-rust",
+		"license",
 	}, names)
 
 	_, err = l.Load("does-not-exist")

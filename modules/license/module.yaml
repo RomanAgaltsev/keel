@@ -1,0 +1,8 @@
+name: license
+description: LICENSE file for the chosen license
+version: 1.0.0
+language: any
+files:
+  - src: "LICENSE.tmpl"
+    dest: "."
+    when: '{{ if ne .license "none" }}true{{ end }}'

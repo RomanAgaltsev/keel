@@ -11,4 +11,5 @@ modules:
     release-rust,
     dep-bots-rust,
     spell,
+    license,
   ]
