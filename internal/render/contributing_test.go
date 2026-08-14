@@ -32,7 +32,10 @@ func TestContributingGo(t *testing.T) {
 	require.Contains(t, got, "depguard")
 	// The required-check list must name the job names the Go recipe's workflows
 	// actually define; a required check that never reports blocks every PR.
-	require.Contains(t, got, "`govulncheck` when those are enabled")
+	// security-go emits one security.yml whose jobs are codeql / govulncheck /
+	// dependency-review / actionlint.
+	require.Contains(t, got, "`dependency-review`")
+	require.Contains(t, got, "`codeql` and\n  `govulncheck` when those are enabled")
 	require.NotContains(t, got, "cargo")
 }
 

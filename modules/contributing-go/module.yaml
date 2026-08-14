@@ -1,6 +1,6 @@
 name: contributing-go
 description: Contributing guide for a Go repo
-version: 1.0.0
+version: 1.1.0
 language: go
 files:
   - src: "CONTRIBUTING.md.tmpl"
