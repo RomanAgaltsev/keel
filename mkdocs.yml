@@ -39,6 +39,7 @@ nav:
       - Answers files & CI: guides/answers-and-ci.md
       - Repo states: guides/repo-states.md
       - Updating a repo: guides/updating.md
+      - Repository settings: guides/settings.md
       - Providers: guides/providers.md
       - Configuration: guides/config.md
   - Authoring:

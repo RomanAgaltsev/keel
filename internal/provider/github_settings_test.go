@@ -578,3 +578,28 @@ func TestRulesetGroupSkippedWhenAbsentFromFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, changes)
 }
+
+// TestReadToggle404MeansDisabledNotUnreachable pins a deliberate limitation found
+// during the 2026-08-15 acceptance run. GitHub answers 404 both for "this toggle
+// is off" and for "this repository is not visible to you", and the two are not
+// distinguishable from the response. keel chooses "off", so a settings run against
+// an unreachable repo reports spurious drift on the toggle groups.
+//
+// That is acceptable only because it never appears alone: every other group reads
+// the repository object and fails loudly, so the report carries those failures and
+// a non-zero exit alongside the bogus drift. If a toggle group is ever the only
+// group, revisit this.
+func TestReadToggle404MeansDisabledNotUnreachable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"Not Found"}`))
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "vuln-reporting").Plan(context.Background(), settings.Desired{
+		Security: &settings.Security{PrivateVulnerabilityReporting: ptr(true)},
+	})
+	require.NoError(t, err, "a 404 is read as disabled, not as an error")
+	require.Len(t, changes, 1, "which means an unreachable repo shows as drift here")
+}
