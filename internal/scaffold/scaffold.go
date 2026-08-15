@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/RomanAgaltsev/keel/v2/internal/module"
 	"github.com/RomanAgaltsev/keel/v2/internal/provider"
 	"github.com/RomanAgaltsev/keel/v2/internal/render"
+	"github.com/RomanAgaltsev/keel/v2/internal/settings"
 )
 
 // Options configures a keel new run.
@@ -43,6 +45,9 @@ type Result struct {
 	Pushed    bool
 	DryRun    bool
 	NextSteps []string
+	// Settings reports the outcome of the repo-settings reconcile, or nil when
+	// no settings file was present or no remote was involved.
+	Settings *settings.Report
 }
 
 // Run executes the lifecycle, branching on the repo-state.
@@ -109,7 +114,45 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	if err := remoteStep(ctx, repo, opts, spec, remote, &res); err != nil {
 		return res, err
 	}
+
+	// 8. Repo settings. Deliberately last and deliberately silent about failure:
+	// the repo exists and the code is pushed by now, so failing the run here
+	// could not undo anything and re-running keel new would not retry it usefully.
+	settingsStep(ctx, opts, spec, &res)
 	return res, nil
+}
+
+// settingsStep reconciles the remote's settings against the repo's settings file.
+// It never returns an error: every failure is reported in Result.Settings and as
+// a next step, so a settings problem cannot fail a scaffold.
+func settingsStep(ctx context.Context, opts Options, spec provider.RepoSpec, res *Result) {
+	if opts.Provider == nil || !opts.CreateRemote {
+		return
+	}
+	if !res.Created && !res.State.RemotePresent {
+		return // no remote was created or found; nothing to configure
+	}
+	path := filepath.Join(opts.Target, filepath.FromSlash(settings.DefaultPath))
+	d, err := settings.Load(path)
+	if errors.Is(err, settings.ErrNotFound) {
+		return
+	}
+	if err != nil {
+		res.NextSteps = append(res.NextSteps, fmt.Sprintf("settings not applied: %v", err))
+		return
+	}
+	applier, ok := opts.Provider.(provider.SettingsApplier)
+	if !ok {
+		res.NextSteps = append(res.NextSteps,
+			fmt.Sprintf("settings are not supported for provider %s; apply %s by hand", opts.Provider.Name(), settings.DefaultPath))
+		return
+	}
+	rep := settings.Reconcile(ctx, applier.SettingsGroups(spec), d, true)
+	res.Settings = &rep
+	if len(rep.Failed) > 0 {
+		res.NextSteps = append(res.NextSteps,
+			fmt.Sprintf("keel settings apply -C %s   # retry %d failed setting group(s) with an admin-scoped token", opts.Target, len(rep.Failed)))
+	}
 }
 
 // detectRemote resolves whether a remote already exists and how to reach it.
