@@ -40,6 +40,10 @@ func goldenAnswers(recipeName string) answers.Answers {
 	case "go-service":
 		a["enable_codeql"] = true
 		a["enable_govulncheck"] = true
+	case "go-library":
+		a["description"] = "a demo library"
+		a["enable_codeql"] = true
+		a["enable_govulncheck"] = true
 	case "rust-service":
 		a["enable_cargo_audit"] = true
 		a["enable_cargo_deny"] = true
@@ -47,22 +51,31 @@ func goldenAnswers(recipeName string) answers.Answers {
 	return a
 }
 
-func TestGoServiceGolden(t *testing.T) {
+// planForRecipe renders a builtin recipe the way `keel new` does: the archetype
+// is taken from the recipe, not from the answer file.
+func planForRecipe(t *testing.T, name string) render.Plan {
+	t.Helper()
 	l := module.NewFSLoader(keel.BuiltinFS)
-	rec, err := recipe.Load(keel.BuiltinFS, "go-service")
+	rec, err := recipe.Load(keel.BuiltinFS, name)
 	require.NoError(t, err)
-
-	plan, err := render.BuildRecipe(l, rec.ModuleNames(), goldenAnswers("go-service"))
+	a := goldenAnswers(name)
+	a["archetype"] = rec.Archetype
+	plan, err := render.BuildRecipe(l, rec.ModuleNames(), a)
 	require.NoError(t, err)
+	return plan
+}
 
-	goldenDir := filepath.Join("testdata", "golden", "go-service")
+// assertGolden compares a rendered plan against a golden tree, or rewrites the
+// tree when -update is passed.
+func assertGolden(t *testing.T, plan render.Plan, recipeName string) {
+	t.Helper()
+	goldenDir := filepath.Join("testdata", "golden", recipeName)
 	if *update {
 		require.NoError(t, os.RemoveAll(goldenDir))
 		require.NoError(t, render.WritePlan(plan, goldenDir))
 		return
 	}
 
-	// Compare plan against the golden tree.
 	want := map[string]string{}
 	require.NoError(t, filepath.WalkDir(goldenDir, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -77,12 +90,32 @@ func TestGoServiceGolden(t *testing.T) {
 		return nil
 	}))
 
-	gotKeys := keys(plan.Files)
-	wantKeys := keys(want)
-	require.Equal(t, wantKeys, gotKeys, "file set differs from golden")
+	require.Equal(t, keys(want), keys(plan.Files), "file set differs from golden")
 	for k, v := range want {
 		require.Equal(t, v, plan.Files[k], "content differs for %s", k)
 	}
+}
+
+func TestGoServiceGolden(t *testing.T) {
+	assertGolden(t, planForRecipe(t, "go-service"), "go-service")
+}
+
+func TestGoLibraryGolden(t *testing.T) {
+	assertGolden(t, planForRecipe(t, "go-library"), "go-library")
+}
+
+// TestGoLibraryGoldenHasNoBinaryMachinery states the point of the recipe
+// directly, so a future regression names itself instead of showing up as an
+// opaque golden diff.
+func TestGoLibraryGoldenHasNoBinaryMachinery(t *testing.T) {
+	plan := planForRecipe(t, "go-library")
+	require.NotContains(t, plan.Files, ".goreleaser.yaml")
+	for dest := range plan.Files {
+		require.NotContains(t, dest, "cmd/")
+	}
+	require.Contains(t, plan.Files, "doc.go")
+	require.Contains(t, plan.Files, "demo.go")
+	require.NotContains(t, plan.Files["Taskfile.yml"], "\n  build:")
 }
 
 func keys(m map[string]string) []string {
