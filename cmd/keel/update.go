@@ -99,6 +99,7 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 
 	up, err := update.Classify(update.Input{
 		Candidates:     ms.Candidates(),
+		Orphaned:       ms.OrphanedSet(),
 		VersionChanged: ms.VersionChanged,
 		Render:         plan.Files,
 		Owner:          plan.Owner(),

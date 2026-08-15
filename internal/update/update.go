@@ -23,9 +23,14 @@ const (
 	Conflict
 	// New: a file the updated module renders that does not exist on disk yet.
 	New
-	// Removed: a file recorded in the lock that the updated module no longer
-	// renders. Reported only; never deleted.
+	// Removed: a file recorded in the lock that the recipe no longer renders and
+	// that still matches the bytes keel wrote. Safe to delete: retracting an
+	// untouched keel-authored file is the same trust claim as overwriting one.
 	Removed
+	// RemovedEdited: as Removed, but the file on disk differs from what keel
+	// recorded writing (or no baseline exists). Never deleted — reported so the
+	// user can decide.
+	RemovedEdited
 )
 
 // FileChange is one classified file. Content is the new render (empty for Removed).
@@ -45,6 +50,9 @@ type Input struct {
 	// Candidates are the module names to update (version-bumped, or all under
 	// --reconfigure), already filtered by any --modules selection.
 	Candidates map[string]bool
+	// Orphaned are modules recorded in the lock that the recipe no longer names.
+	// Their recorded files are retracted even though no module renders them.
+	Orphaned map[string]bool
 	// VersionChanged[module] reports whether the module's version actually changed.
 	// Used only to decide whether a v1 (hash-less) lock can reconstruct a baseline.
 	VersionChanged map[string]bool
@@ -72,17 +80,44 @@ func Classify(in Input) (Plan, error) {
 		}
 	}
 
-	// Removed: recorded for a candidate module but absent from the new render.
-	for mod := range in.Candidates {
-		for path := range in.Original[mod] {
-			if _, rendered := in.Render[path]; !rendered {
-				changes = append(changes, FileChange{Path: path, Class: Removed})
+	// Retractions: recorded for a candidate or orphaned module, absent from the
+	// new render. A v1 lock records no files, so it can report none of these —
+	// pre-existing and unchanged.
+	for mod := range retractable(in) {
+		for path, origHash := range in.Original[mod] {
+			if _, rendered := in.Render[path]; rendered {
+				continue
 			}
+			onHash, exists, err := in.HashOf(path)
+			if err != nil {
+				return Plan{}, err
+			}
+			if !exists {
+				continue // the user already deleted it
+			}
+			class := RemovedEdited
+			if onHash == origHash {
+				class = Removed
+			}
+			changes = append(changes, FileChange{Path: path, Class: class})
 		}
 	}
 
 	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
 	return Plan{Changes: changes}, nil
+}
+
+// retractable returns the modules whose recorded files may be retracted: the
+// candidates being updated, plus any module the recipe dropped entirely.
+func retractable(in Input) map[string]bool {
+	out := make(map[string]bool, len(in.Candidates)+len(in.Orphaned))
+	for mod := range in.Candidates {
+		out[mod] = true
+	}
+	for mod := range in.Orphaned {
+		out[mod] = true
+	}
+	return out
 }
 
 // classifyRendered classifies a single rendered dest. The bool reports whether
