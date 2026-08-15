@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/RomanAgaltsev/keel/compare/v2.2.0...v2.3.0) (2026-08-15)
+
+
+### Features
+
+* reconcile repository settings from .github/keel-settings.yml ([#46](https://github.com/RomanAgaltsev/keel/issues/46)) ([b8003ca](https://github.com/RomanAgaltsev/keel/commit/b8003cad679b659b969a4b94e726561f50242317))
+
 ## [2.2.0](https://github.com/RomanAgaltsev/keel/compare/v2.1.1...v2.2.0) (2026-08-15)
 
 
