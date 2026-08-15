@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/RomanAgaltsev/keel/compare/v2.0.1...v2.1.0) (2026-08-15)
+
+
+### Features
+
+* make keel update deliver what the recipe says ([#40](https://github.com/RomanAgaltsev/keel/issues/40)) ([5ad48c9](https://github.com/RomanAgaltsev/keel/commit/5ad48c999640072617804617460acc60b2cb6238))
+
 ## [2.0.1](https://github.com/RomanAgaltsev/keel/compare/v2.0.0...v2.0.1) (2026-08-14)
 
 
