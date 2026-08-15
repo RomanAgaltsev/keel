@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/RomanAgaltsev/keel/internal/answers"
-	"github.com/RomanAgaltsev/keel/internal/manifest"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
 // supportedTypes are the question types keel knows how to prompt for and render.

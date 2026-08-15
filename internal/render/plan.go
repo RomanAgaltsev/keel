@@ -5,9 +5,9 @@ import (
 	"io/fs"
 	"sort"
 
-	"github.com/RomanAgaltsev/keel/internal/answers"
-	"github.com/RomanAgaltsev/keel/internal/manifest"
-	"github.com/RomanAgaltsev/keel/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
+	"github.com/RomanAgaltsev/keel/v2/internal/module"
 )
 
 // moduleFS pairs a resolved manifest with its template filesystem.

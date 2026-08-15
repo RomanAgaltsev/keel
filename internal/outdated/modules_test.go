@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel"
-	"github.com/RomanAgaltsev/keel/internal/lock"
-	"github.com/RomanAgaltsev/keel/internal/module"
-	"github.com/RomanAgaltsev/keel/internal/outdated"
+	"github.com/RomanAgaltsev/keel/v2"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/outdated"
 )
 
 func TestModuleUpdates(t *testing.T) {

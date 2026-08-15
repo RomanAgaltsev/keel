@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/v2/internal/modver"
 )
 
 // ToolUpdate reports a pin that is behind its latest upstream release.

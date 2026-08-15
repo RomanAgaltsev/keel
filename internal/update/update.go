@@ -8,7 +8,7 @@ package update
 import (
 	"sort"
 
-	"github.com/RomanAgaltsev/keel/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
 )
 
 // Class is how one file should be treated on update.

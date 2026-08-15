@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/RomanAgaltsev/keel/internal/lock"
-	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/modver"
 )
 
 // State is what an update should do with one module.

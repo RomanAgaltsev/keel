@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/provider"
+	"github.com/RomanAgaltsev/keel/v2/internal/provider"
 )
 
 const bbExistsBody = `{"links":{"html":{"href":"https://bitbucket.org/ws/exists"},"clone":[{"name":"https","href":"https://bitbucket.org/ws/exists.git"},{"name":"ssh","href":"git@bitbucket.org:ws/exists.git"}]}}`

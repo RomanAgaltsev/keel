@@ -3,7 +3,7 @@ package update
 import (
 	"sort"
 
-	"github.com/RomanAgaltsev/keel/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
 )
 
 // NewLock returns the lock to write after an update: refreshed versions and file

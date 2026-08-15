@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/RomanAgaltsev/keel/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
 )
 
 // LoadAnswersFile reads a YAML answers file into an Answers map.

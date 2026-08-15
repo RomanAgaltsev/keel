@@ -14,7 +14,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/RomanAgaltsev/keel/internal/recipe"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
 )
 
 // Resolved is a located external module ready to load.

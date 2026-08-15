@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/lock"
-	"github.com/RomanAgaltsev/keel/internal/update"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/update"
 )
 
 // diskHash builds a HashOf seam from an in-memory "disk" map.

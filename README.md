@@ -59,7 +59,7 @@ keel new --recipe rust-service
 ## Install
 
 ```bash
-go install github.com/RomanAgaltsev/keel/cmd/keel@latest
+go install github.com/RomanAgaltsev/keel/v2/cmd/keel@latest
 ```
 
 Or grab a binary from the [releases page](https://github.com/RomanAgaltsev/keel/releases).

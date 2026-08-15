@@ -2,7 +2,7 @@
 // merges module-contributed questions, and validates the result.
 package prompt
 
-import "github.com/RomanAgaltsev/keel/internal/manifest"
+import "github.com/RomanAgaltsev/keel/v2/internal/manifest"
 
 // CoreQuestions are the built-in questions asked for every recipe (§6.3).
 func CoreQuestions() []manifest.Question {

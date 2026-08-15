@@ -3,7 +3,7 @@ package module
 import (
 	"fmt"
 
-	"github.com/RomanAgaltsev/keel/internal/manifest"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
 // Resolve expands the given module names with transitive requires and returns

@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/RomanAgaltsev/keel/internal/manifest"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
 // Loader loads module manifests and template file trees by module name.

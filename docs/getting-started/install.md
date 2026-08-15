@@ -3,7 +3,7 @@
 Install `keel` with the Go toolchain:
 
 ```bash
-go install github.com/RomanAgaltsev/keel/cmd/keel@latest
+go install github.com/RomanAgaltsev/keel/v2/cmd/keel@latest
 ```
 
 This drops a `keel` binary into `$(go env GOPATH)/bin` — make sure that

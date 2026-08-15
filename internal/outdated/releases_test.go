@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/outdated"
+	"github.com/RomanAgaltsev/keel/v2/internal/outdated"
 )
 
 func TestLatestTag(t *testing.T) {

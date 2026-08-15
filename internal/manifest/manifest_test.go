@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/RomanAgaltsev/keel/internal/manifest"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
 func TestParseManifest(t *testing.T) {

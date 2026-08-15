@@ -11,7 +11,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/v2/internal/modver"
 )
 
 func main() {

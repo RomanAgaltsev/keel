@@ -3,9 +3,9 @@
 package outdated
 
 import (
-	"github.com/RomanAgaltsev/keel/internal/lock"
-	"github.com/RomanAgaltsev/keel/internal/module"
-	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/modver"
 )
 
 // ModuleUpdate reports a keel module whose embedded version is newer than the

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/config"
+	"github.com/RomanAgaltsev/keel/v2/internal/config"
 )
 
 func TestLoadMissingReturnsZero(t *testing.T) {

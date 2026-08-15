@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/RomanAgaltsev/keel"
-	"github.com/RomanAgaltsev/keel/internal/module"
-	"github.com/RomanAgaltsev/keel/internal/recipe"
+	"github.com/RomanAgaltsev/keel/v2"
+	"github.com/RomanAgaltsev/keel/v2/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
 )
 
 func newListCmd() *cobra.Command {
