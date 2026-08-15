@@ -11,7 +11,7 @@ vars:
   GOLANGCI_LINT: "{{"{{.BIN_DIR}}"}}/golangci-lint{{"{{.EXE_EXT}}"}}"
   GCI: "{{"{{.BIN_DIR}}"}}/gci{{"{{.EXE_EXT}}"}}"
   GOFUMPT: "{{"{{.BIN_DIR}}"}}/gofumpt{{"{{.EXE_EXT}}"}}"
-
+{{ if not .is_library }}
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   COMMIT:
@@ -23,7 +23,7 @@ vars:
     -X main.version={{"{{.VERSION}}"}}
     -X main.commit={{"{{.COMMIT}}"}}
     -X main.date={{"{{.DATE}}"}}
-
+{{ end }}
 tasks:
   default:
     desc: list available tasks
@@ -89,12 +89,12 @@ tasks:
     cmds:
       - echo 'Updating deps...'
       - go mod tidy -compat={{"{{.GO_VERSION}}"}}
-
+{{ if not .is_library }}
   build:
     desc: build {{ .repo_name }} into ./bin
     cmds:
       - go build -ldflags '{{"{{.LDFLAGS}}"}}' -o {{"{{.BIN_DIR}}"}}/{{ .repo_name }}{{"{{.EXE_EXT}}"}} ./cmd/{{ .repo_name }}
-
+{{ end }}
   ci:
     desc: full local gate (what CI runs)
     cmds:

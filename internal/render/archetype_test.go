@@ -70,3 +70,29 @@ func TestGoModLibraryPackageNameIsSanitized(t *testing.T) {
 	require.Contains(t, plan.Files, "go-thing.go")
 	require.Contains(t, plan.Files["go-thing.go"], "package gothing")
 }
+
+func taskfileGoLibrary(t *testing.T) string {
+	t.Helper()
+	return libraryPlan(t, "base-layout", "taskfile-go").Files["Taskfile.yml"]
+}
+
+func TestTaskfileGoLibraryHasNoBuildTask(t *testing.T) {
+	got := taskfileGoLibrary(t)
+	require.NotContains(t, got, "\n  build:")
+	require.NotContains(t, got, "LDFLAGS")
+	require.NotContains(t, got, "./cmd/demo")
+	require.NotContains(t, got, "-X main.version=")
+}
+
+func TestTaskfileGoLibraryKeepsEveryOtherTask(t *testing.T) {
+	got := taskfileGoLibrary(t)
+	for _, task := range []string{
+		"setup:", "formatters:install:", "golangci-lint:install:", "format:",
+		"lint:", "vet:", "test:", "cover:", "deps:update:", "ci:",
+		"keel:outdated:", "keel:update:", "keel:settings:",
+	} {
+		require.Contains(t, got, task)
+	}
+	// The tool pins live here regardless of archetype.
+	require.Contains(t, got, "GOLANGCI_LINT_VERSION: \"v2.12.2\"")
+}
