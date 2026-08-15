@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/RomanAgaltsev/keel/compare/v2.1.0...v2.1.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* **build:** declare the module path as /v2 so v2 releases are installable ([#42](https://github.com/RomanAgaltsev/keel/issues/42)) ([2c94bb6](https://github.com/RomanAgaltsev/keel/commit/2c94bb695df57cf0d79f908cf702425556d89e4a))
+
 ## [2.1.0](https://github.com/RomanAgaltsev/keel/compare/v2.0.1...v2.1.0) (2026-08-15)
 
 
