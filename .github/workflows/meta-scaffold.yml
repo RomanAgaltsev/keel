@@ -39,8 +39,14 @@ jobs:
         run: |
           PREV=$(git tag --sort=-v:refname | grep '^v' | head -1)
           echo "previous release: $PREV"
-          GOBIN=/tmp/prevbin go install "github.com/RomanAgaltsev/keel/cmd/keel@$PREV"
-          /tmp/prevbin/keel new --no-input --answers testdata/meta/answers.yaml --target /tmp/xrel
+          # Build from the tag rather than `go install ...@$PREV`. keel's module
+          # path has no /v2 suffix, so the module proxy rejects every v2 tag
+          # outright ("module path must match major version") and `@latest`
+          # silently resolves to v1.7.1. A worktree build bypasses the proxy and
+          # keeps this job honest about which binary it is testing.
+          git worktree add /tmp/prev "$PREV"
+          (cd /tmp/prev && go build -o /tmp/prevkeel ./cmd/keel)
+          /tmp/prevkeel new --no-input --answers testdata/meta/answers.yaml --target /tmp/xrel
       - name: Update it with HEAD
         run: |
           task build
