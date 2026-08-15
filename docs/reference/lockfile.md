@@ -37,6 +37,7 @@ answers:
 | `lock_version` | Schema version (`2`). |
 | `keel_version` | The keel version that wrote the lock. |
 | `recipe` | Recipe name (or the path passed to `--recipe`). |
+| `recipe_source` | Path a file-based recipe was loaded from, as given at scaffold time. Absent for a builtin recipe. Optional and additive: an older keel ignores it, so a lock written by 2.1.0 still reads on 2.0.0. |
 | `modules[]` | One entry per module, in render order. |
 | `modules[].name` | Module name. |
 | `modules[].source` | Provenance: `builtin`, `dir:<path>`, or `git:<url>//<subdir>@<ref>`. |
