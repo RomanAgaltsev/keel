@@ -15,4 +15,5 @@ modules:
     governance,
     contributing-go,
     community-templates,
+    repo-settings-go,
   ]

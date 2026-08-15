@@ -40,6 +40,8 @@ func TestLoaderLoadModule(t *testing.T) {
 		"contributing-go",
 		"contributing-rust",
 		"community-templates",
+		"repo-settings-go",
+		"repo-settings-rust",
 	}, names)
 
 	_, err = l.Load("does-not-exist")

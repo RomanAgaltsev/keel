@@ -109,3 +109,6 @@ tasks:
   keel:update:
     desc: re-apply scaffold templates (writes files — review the diff)
     cmds: ["keel update"]
+  keel:settings:
+    desc: check the remote's settings against .github/keel-settings.yml
+    cmds: ["keel settings apply --check"]

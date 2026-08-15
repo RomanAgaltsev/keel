@@ -31,6 +31,7 @@ func goldenAnswers(recipeName string) answers.Answers {
 		"license":        "MIT",
 		"year":           2026,
 		"provider":       "github",
+		"visibility":     "public",
 		"code_owner":     "RomanAgaltsev",
 		"enable_codecov": true,
 		"dep_bot":        "dependabot",

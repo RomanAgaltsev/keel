@@ -98,3 +98,14 @@ func taskBlock(t *testing.T, taskfile, name string) string {
 	}
 	return rest
 }
+
+// TestTaskfileGoExposesKeelSettingsCheck pins the read-only settings affordance.
+// It passes --check deliberately: the writing form belongs to a human, and the
+// keel: namespace must never enter the ci gate, which meta-scaffold.yml runs
+// inside a fresh scaffold in keel's own CI.
+func TestTaskfileGoExposesKeelSettingsCheck(t *testing.T) {
+	got := taskfileGo(t)
+	require.Contains(t, got, "keel:settings:")
+	require.Contains(t, got, "keel settings apply --check")
+	require.NotContains(t, taskBlock(t, got, "ci"), "keel")
+}
