@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.rp.outputs.release_created }}
+      tag: ${{ steps.rp.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: rp
@@ -26,3 +27,45 @@ jobs:
       - uses: goreleaser/goreleaser-action@v7
         with: { args: release --clean }
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  # A release is not delivered until a user can install it. keel has now shipped
+  # three defects that every green pipeline missed — a Pages site that 404'd, a
+  # dependabot manager that never ran, and a module path that made `go install`
+  # silently fetch a three-release-old binary. All three shared a shape: the
+  # publish step's exit code proved the artifact was pushed, never that anyone
+  # could consume it. This job consumes it.
+  verify-install:
+    name: the released tag must be installable and self-identifying
+    needs: [release-please, goreleaser]
+    if: needs.release-please.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: go.mod }
+      - name: Install the tag exactly as the README tells a user to
+        env:
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          set -euo pipefail
+          echo "verifying $TAG is installable from the public module proxy"
+          # A freshly published module path can take a few minutes to appear on
+          # proxy.golang.org, so poll rather than fail on the first miss.
+          for attempt in $(seq 1 10); do
+            if GOBIN=/tmp/vbin go install "github.com/RomanAgaltsev/keel/v2/cmd/keel@${TAG}"; then
+              break
+            fi
+            echo "attempt ${attempt}/10: not on the proxy yet, waiting 30s"
+            sleep 30
+          done
+          if [ ! -x /tmp/vbin/keel ]; then
+            echo "::error::${TAG} was never installable via 'go install'"
+            exit 1
+          fi
+          got=$(/tmp/vbin/keel version)
+          echo "reported: ${got}"
+          case "${got}" in
+            *"${TAG}"*) echo "OK: the installed binary identifies itself as ${TAG}" ;;
+            *) echo "::error::installed binary reports '${got}', which does not mention ${TAG}"
+               exit 1 ;;
+          esac

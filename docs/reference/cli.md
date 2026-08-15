@@ -76,5 +76,12 @@ Print version, commit, and build date:
 
 ```bash
 keel version
-# keel 1.7.1 (commit abc1234, built 2026-06-23)
+# keel v2.1.1 (commit abc1234, built 2026-08-15T05:49:39Z)
 ```
+
+A release binary carries these values from `-ldflags`, injected by GoReleaser and
+by `task build`. A binary from `go install` gets no ldflags, so keel falls back to
+the module version and VCS stamp Go records in every build — meaning a
+`go install`ed keel still reports which release it is, rather than `dev`. A build
+from a working tree with uncommitted changes reports the tag with a `+dirty`
+suffix.
