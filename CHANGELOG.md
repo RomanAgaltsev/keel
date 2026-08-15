@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/RomanAgaltsev/keel/compare/v2.4.0...v2.4.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* address the 2026-08-15 comprehensive review (1 high, 5 medium, 4 low) ([#50](https://github.com/RomanAgaltsev/keel/issues/50)) ([27599fa](https://github.com/RomanAgaltsev/keel/commit/27599faf2182a2b60bb72b22465c1d36c9f2995b))
+
 ## [2.4.0](https://github.com/RomanAgaltsev/keel/compare/v2.3.0...v2.4.0) (2026-08-15)
 
 
