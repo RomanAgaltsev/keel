@@ -1,6 +1,6 @@
 name: security-rust
 description: cargo-audit + cargo-deny, dependency-review, workflow linting
-version: 1.1.0
+version: 1.2.0
 language: rust
 requires: [base-layout]
 questions:

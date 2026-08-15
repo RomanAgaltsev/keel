@@ -28,7 +28,7 @@ func (s *stubGroup) Plan(_ context.Context, _ settings.Desired) ([]settings.Chan
 	return s.changes, s.planErr
 }
 
-func (s *stubGroup) Apply(_ context.Context, _ []settings.Change) error { return s.applyErr }
+func (s *stubGroup) Apply(_ context.Context) error { return s.applyErr }
 
 // settingsRepo builds a directory with a settings file and a lock naming the
 // remote, then points resolveProvider at a fake carrying the given groups.

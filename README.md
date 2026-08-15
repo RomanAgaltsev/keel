@@ -229,7 +229,7 @@ modules: [base-layout, cargo-mod, taskfile-rust, lint-rust, test-rust, security-
 
 Most capabilities ship as a matched pair — one module per language — so a recipe
 picks the variant that fits its toolchain. `base-layout` and `spell` are
-language-agnostic and shared by both recipes.
+language-agnostic and shared by every recipe.
 
 | Module | Lang | Description |
 |--------|------|-------------|

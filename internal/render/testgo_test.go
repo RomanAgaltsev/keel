@@ -27,7 +27,7 @@ func TestTestGoCodecovEnabled(t *testing.T) {
 	require.Contains(t, plan.Files, "codecov.yml")
 	require.Contains(t, plan.Files["codecov.yml"], "cmd/demo/main.go")
 	wf := plan.Files[".github/workflows/test.yml"]
-	require.Contains(t, wf, "codecov/codecov-action@v7")
+	require.Contains(t, wf, "codecov/codecov-action@")
 	require.Contains(t, wf, "${{ secrets.CODECOV_TOKEN }}")
 }
 

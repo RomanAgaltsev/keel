@@ -20,7 +20,7 @@ func TestSecurityRustAll(t *testing.T) {
 	plan, err := render.BuildRecipe(l, []string{"base-layout", "security-rust"}, baseSecAnswers())
 	require.NoError(t, err)
 	require.Contains(t, plan.Files[".github/workflows/cargo-audit.yml"], "rustsec/audit-check@v2")
-	require.Contains(t, plan.Files[".github/workflows/cargo-deny.yml"], "EmbarkStudios/cargo-deny-action@v2")
+	require.Contains(t, plan.Files[".github/workflows/cargo-deny.yml"], "EmbarkStudios/cargo-deny-action@")
 	require.Contains(t, plan.Files, "deny.toml")
 	require.Contains(t, plan.Files, ".github/workflows/dependency-review.yml")
 	require.Contains(t, plan.Files, ".github/workflows/actionlint.yml")

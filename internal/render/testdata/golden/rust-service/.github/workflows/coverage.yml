@@ -16,6 +16,6 @@ jobs:
         with:
           tool: cargo-llvm-cov,nextest
       - run: cargo llvm-cov nextest --all-features --lcov --output-path lcov.info
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           files: lcov.info

@@ -8,7 +8,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/RomanAgaltsev/keel/v2"
 	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
 )
 
 func TestOutdatedModulesOnly(t *testing.T) {
@@ -30,6 +32,10 @@ func TestOutdatedModulesOnly(t *testing.T) {
 	require.Contains(t, s, "0.9.0")
 }
 
+// TestOutdatedModulesOnlyClean uses a lock with no recipe, so version checking
+// finds nothing outdated but the composition half cannot run at all. Since the
+// 2026-08-15 review that is exit 2 ("could not check"), not exit 0 — the version
+// result is still printed, and the unchecked half is named.
 func TestOutdatedModulesOnlyClean(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, lock.Write(filepath.Join(dir, ".scaffold.lock"), lock.Lock{
@@ -39,7 +45,37 @@ func TestOutdatedModulesOnlyClean(t *testing.T) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"--path", dir, "--modules-only"})
-	require.NoError(t, cmd.Execute()) // nothing outdated → no error
+
+	err := cmd.Execute()
+
+	var ec exitCodeError
+	require.ErrorAs(t, err, &ec)
+	require.Equal(t, 2, ec.code, "a check that could not run is not the same as being up to date")
+	require.Contains(t, out.String(), "not checked (composition)")
+	require.NotContains(t, out.String(), "Everything is up to date.")
+}
+
+// TestOutdatedFullyCleanExitsZero is the control: when every check runs and finds
+// nothing, the command must still say so plainly and exit 0.
+func TestOutdatedFullyCleanExitsZero(t *testing.T) {
+	dir := t.TempDir()
+	rec, err := recipe.Load(keel.BuiltinFS, "go-service")
+	require.NoError(t, err)
+	mods := make([]lock.Module, 0, len(rec.Modules))
+	for _, name := range rec.ModuleNames() {
+		mods = append(mods, lock.Module{Name: name, Source: "builtin", Version: "999.0.0"})
+	}
+	require.NoError(t, lock.Write(filepath.Join(dir, ".scaffold.lock"), lock.Lock{
+		Recipe: "go-service", Modules: mods,
+	}))
+
+	cmd := newOutdatedCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"--path", dir, "--modules-only"})
+
+	require.NoError(t, cmd.Execute())
+	require.Contains(t, out.String(), "Everything is up to date.")
 }
 
 func TestReadPinFiles(t *testing.T) {
@@ -90,4 +126,59 @@ answers: {}
 	_ = cmd.Execute() // non-zero exit when updates exist is expected
 
 	require.Contains(t, buf.String(), "license", "a recipe-gained module must be reported")
+}
+
+// TestOutdatedWithoutLockDoesNotClaimUpToDate is the H1 guard from the
+// 2026-08-15 review. `keel outdated` exists to answer "am I behind?", and it
+// used to answer "Everything is up to date." in four situations where it had
+// checked nothing at all — the loudest being a directory that is not a keel repo
+// (a mistyped --path, or the wrong working directory). "I could not check" and
+// "there is nothing to fix" must not print identically.
+func TestOutdatedWithoutLockDoesNotClaimUpToDate(t *testing.T) {
+	dir := t.TempDir()
+
+	cmd := newOutdatedCmd()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{"--path", dir, "--modules-only"})
+	_ = cmd.Execute()
+
+	out := buf.String()
+	require.NotContains(t, out, "Everything is up to date",
+		"a directory with no .scaffold.lock was never compared against anything")
+	require.Contains(t, out, ".scaffold.lock")
+}
+
+// TestOutdatedReportsDegradedCompositionCheck covers the subtler H1 paths: the
+// lock exists, so version checking works, but the composition half cannot run.
+// `outdated` builds a builtin-only loader, so a recipe naming an external module
+// makes update.Resolve fail — and that used to be swallowed into a clean report.
+// The version half is still worth printing; the command just has to admit which
+// half it skipped.
+func TestOutdatedReportsDegradedCompositionCheck(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "recipe.yaml"), []byte(
+		"name: custom\nlanguage: go\nmodules: [base-layout, my-external]\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".scaffold.lock"), []byte(`lock_version: 2
+keel_version: 2.4.0
+recipe: custom
+recipe_source: recipe.yaml
+modules:
+    - name: base-layout
+      source: builtin
+      version: 1.0.0
+answers: {}
+`), 0o600))
+
+	cmd := newOutdatedCmd()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{"--path", dir, "--modules-only"})
+	_ = cmd.Execute()
+
+	out := buf.String()
+	require.NotContains(t, out, "Everything is up to date")
+	require.Contains(t, out, "composition")
 }

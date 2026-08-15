@@ -31,7 +31,7 @@ func (r *recordingGroup) Plan(_ context.Context, _ settings.Desired) ([]settings
 	return r.changes, nil
 }
 
-func (r *recordingGroup) Apply(_ context.Context, _ []settings.Change) error {
+func (r *recordingGroup) Apply(_ context.Context) error {
 	r.applied = true
 	return nil
 }
