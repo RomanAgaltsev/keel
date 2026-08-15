@@ -162,3 +162,145 @@ func TestGroupSurfacesAPIError(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "403")
 }
+
+func TestSecurityGroupPatchesAnalysisAndTogglesAlerts(t *testing.T) {
+	var patch map[string]any
+	var puts []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo":
+			_, _ = w.Write([]byte(`{"security_and_analysis":{"secret_scanning":{"status":"disabled"},"secret_scanning_push_protection":{"status":"disabled"},"dependency_graph":{"status":"enabled"}}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo/vulnerability-alerts":
+			w.WriteHeader(http.StatusNotFound) // alerts currently off
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo/automated-security-fixes":
+			w.WriteHeader(http.StatusNoContent) // security updates currently on
+		case r.Method == http.MethodPatch:
+			b, _ := io.ReadAll(r.Body)
+			require.NoError(t, json.Unmarshal(b, &patch))
+			_, _ = w.Write([]byte(`{}`))
+		case r.Method == http.MethodPut:
+			puts = append(puts, r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "security")
+
+	d := settings.Desired{Security: &settings.Security{
+		SecretScanning:            ptr(true), // drifted
+		DependencyGraph:           ptr(true), // matches -> no change
+		DependabotAlerts:          ptr(true), // drifted (404 -> on)
+		DependabotSecurityUpdates: ptr(true), // matches (204) -> no change
+	}}
+	changes, err := g.Plan(context.Background(), d)
+	require.NoError(t, err)
+	require.NoError(t, g.Apply(context.Background(), changes))
+
+	keys := make([]string, 0, len(changes))
+	for _, c := range changes {
+		keys = append(keys, c.Key)
+	}
+	require.ElementsMatch(t, []string{"security.secret_scanning", "security.dependabot_alerts"}, keys)
+
+	sa, ok := patch["security_and_analysis"].(map[string]any)
+	require.True(t, ok, "PATCH must carry a security_and_analysis object")
+	require.Equal(t, map[string]any{"status": "enabled"}, sa["secret_scanning"])
+	require.NotContains(t, sa, "dependency_graph", "a matching key must not be written")
+	require.Equal(t, []string{"/repos/me/demo/vulnerability-alerts"}, puts)
+}
+
+// TestSecurityGroupReadsToggleFrom200WithBody pins the shape verified live on
+// 2026-08-15: automated-security-fixes answers 200 with {"enabled":...} while
+// vulnerability-alerts answers a bodiless 204. Both mean "on", and both answer
+// 404 when off, so the reader is status-only and must accept 200 as well as 204.
+func TestSecurityGroupReadsToggleFrom200WithBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/repos/me/demo/automated-security-fixes" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"enabled":true,"paused":false}`))
+			return
+		}
+		t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "security").Plan(context.Background(), settings.Desired{
+		Security: &settings.Security{DependabotSecurityUpdates: ptr(true)},
+	})
+	require.NoError(t, err)
+	require.Empty(t, changes, "200-with-body must read as enabled, not as drift")
+}
+
+func TestSecurityGroupDisablesWithDelete(t *testing.T) {
+	var deletes []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo":
+			_, _ = w.Write([]byte(`{"security_and_analysis":{}}`))
+		case r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusNoContent) // currently enabled
+		case r.Method == http.MethodDelete:
+			deletes = append(deletes, r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "security")
+
+	changes, err := g.Plan(context.Background(), settings.Desired{
+		Security: &settings.Security{DependabotAlerts: ptr(false)},
+	})
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.NoError(t, g.Apply(context.Background(), changes))
+	require.Equal(t, []string{"/repos/me/demo/vulnerability-alerts"}, deletes)
+}
+
+func TestVulnReportingGroup(t *testing.T) {
+	var puts []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/repos/me/demo/private-vulnerability-reporting", r.URL.Path)
+		if r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		puts = append(puts, r.Method)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "vuln-reporting")
+
+	changes, err := g.Plan(context.Background(), settings.Desired{
+		Security: &settings.Security{PrivateVulnerabilityReporting: ptr(true)},
+	})
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.Equal(t, "security.private_vulnerability_reporting", changes[0].Key)
+	require.NoError(t, g.Apply(context.Background(), changes))
+	require.Equal(t, []string{http.MethodPut}, puts)
+}
+
+func TestSecurityGroupSkippedWhenSectionAbsent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		t.Fatal("no request may be made when the security section is undeclared")
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	for _, name := range []string{"security", "vuln-reporting"} {
+		changes, err := groupByName(t, gh, name).Plan(context.Background(), settings.Desired{})
+		require.NoError(t, err)
+		require.Empty(t, changes)
+	}
+}
