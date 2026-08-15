@@ -69,3 +69,25 @@ func TestReadPinFilesNoWorkflows(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, files)
 }
+
+func TestOutdatedReportsRecipeGainedModules(t *testing.T) {
+	repo := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(repo, ".scaffold.lock"), []byte(`lock_version: 2
+keel_version: 1.7.1
+recipe: go-service
+modules:
+    - name: base-layout
+      source: builtin
+      version: 1.0.0
+answers: {}
+`), 0o600))
+
+	cmd := newOutdatedCmd()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{"--path", repo, "--modules-only"})
+	_ = cmd.Execute() // non-zero exit when updates exist is expected
+
+	require.Contains(t, buf.String(), "license", "a recipe-gained module must be reported")
+}

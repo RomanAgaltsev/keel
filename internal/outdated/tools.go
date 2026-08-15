@@ -19,12 +19,17 @@ type ToolUpdate struct {
 
 // Report is the full outdated result across both axes.
 type Report struct {
-	Tools   []ToolUpdate
-	Modules []ModuleUpdate
+	Tools           []ToolUpdate
+	Modules         []ModuleUpdate
+	AddedModules    []string // named by the recipe, absent from this repo
+	OrphanedModules []string // recorded in the lock, no longer in the recipe
 }
 
 // Empty reports whether nothing is outdated.
-func (r Report) Empty() bool { return len(r.Tools) == 0 && len(r.Modules) == 0 }
+func (r Report) Empty() bool {
+	return len(r.Tools) == 0 && len(r.Modules) == 0 &&
+		len(r.AddedModules) == 0 && len(r.OrphanedModules) == 0
+}
 
 // toolConcurrency bounds the in-flight release lookups, to stay gentle on
 // GitHub's rate limiter while still overlapping the network latency.

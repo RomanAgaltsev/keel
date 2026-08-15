@@ -15,6 +15,7 @@ import (
 	"github.com/RomanAgaltsev/keel/internal/lock"
 	"github.com/RomanAgaltsev/keel/internal/module"
 	"github.com/RomanAgaltsev/keel/internal/outdated"
+	"github.com/RomanAgaltsev/keel/internal/update"
 )
 
 // errUpdatesAvailable signals a non-zero exit without being a real failure.
@@ -44,11 +45,13 @@ func runOutdated(cmd *cobra.Command, path string, toolsOnly, modulesOnly bool) e
 	var rep outdated.Report
 
 	if !toolsOnly {
-		mods, err := moduleUpdates(path)
+		mods, added, orphaned, err := moduleUpdates(path)
 		if err != nil {
 			return err
 		}
 		rep.Modules = mods
+		rep.AddedModules = added
+		rep.OrphanedModules = orphaned
 	}
 	if !modulesOnly {
 		tools, skipped, err := toolUpdates(cmd, path)
@@ -68,14 +71,36 @@ func runOutdated(cmd *cobra.Command, path string, toolsOnly, modulesOnly bool) e
 	return nil
 }
 
-func moduleUpdates(path string) ([]outdated.ModuleUpdate, error) {
+// moduleUpdates reports version-behind modules plus the composition drift that
+// `keel update` would act on, so the two commands never disagree.
+func moduleUpdates(path string) ([]outdated.ModuleUpdate, []string, []string, error) {
 	lk, err := lock.Read(filepath.Join(path, ".scaffold.lock"))
 	if err != nil {
 		// No lock → nothing to compare; not an error.
-		return nil, nil //nolint:nilerr // a missing lock is a valid "no modules to check" state
+		return nil, nil, nil, nil //nolint:nilerr // a missing lock is a valid "nothing to check" state
 	}
 	l := module.NewFSLoader(keel.BuiltinFS)
-	return outdated.ModuleUpdates(l, lk.Modules)
+	ups, err := outdated.ModuleUpdates(l, lk.Modules)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	rec, _, _, _, rerr := resolveUpdateRecipe(lk, path, "")
+	if rerr != nil {
+		// Read-only command: report what we can rather than failing.
+		return ups, nil, nil, nil //nolint:nilerr // composition drift is best-effort here
+	}
+	// Builtin-only composite: `outdated` never fetches external sources, so a
+	// recipe naming one simply yields no drift for that module.
+	comp, err := module.NewComposite(keel.BuiltinFS, nil)
+	if err != nil {
+		return ups, nil, nil, nil //nolint:nilerr // ditto
+	}
+	ms, err := update.Resolve(lk, rec.ModuleNames(), compProvenance(comp), update.Options{})
+	if err != nil {
+		return ups, nil, nil, nil //nolint:nilerr // ditto
+	}
+	return ups, ms.AddedModules(), ms.OrphanedModules(), nil
 }
 
 func toolUpdates(cmd *cobra.Command, path string) ([]outdated.ToolUpdate, int, error) {
@@ -132,5 +157,11 @@ func printReport(out io.Writer, rep outdated.Report) {
 		for _, u := range rep.Modules {
 			fmt.Fprintf(out, "  %-32s %s -> %s\n", u.Name, u.Current, u.Latest)
 		}
+	}
+	for _, name := range rep.AddedModules {
+		fmt.Fprintf(out, "module   %-24s not in this repo (added to the recipe)\n", name)
+	}
+	for _, name := range rep.OrphanedModules {
+		fmt.Fprintf(out, "module   %-24s no longer in the recipe\n", name)
 	}
 }
