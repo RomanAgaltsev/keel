@@ -106,7 +106,8 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 	}
 
 	res, err := scaffold.Run(cmd.Context(), scaffold.Options{
-		Target: target, Recipe: rec.Name, Language: rec.Language, ModuleNames: names, Loader: comp,
+		Target: target, Recipe: rec.Name, RecipeSource: recipeSource(f.recipeName),
+		Language: rec.Language, ModuleNames: names, Loader: comp,
 		Provider: p, Answers: ans, CreateRemote: createRemote, RemoteURL: f.remoteURL,
 		Overwrite: f.overwrite, DryRun: f.dryRun, KeelVersion: version,
 	})
@@ -205,6 +206,15 @@ func loadRecipe(nameOrPath string) (recipe.Recipe, string, error) {
 	}
 	rec, err := recipe.Load(keel.BuiltinFS, nameOrPath)
 	return rec, "", err
+}
+
+// recipeSource returns the path a file-based recipe was given as, so `keel
+// update` can reload it later. A builtin recipe needs no source: it is embedded.
+func recipeSource(nameOrPath string) string {
+	if isRecipeFile(nameOrPath) {
+		return nameOrPath
+	}
+	return ""
 }
 
 func isRecipeFile(s string) bool {

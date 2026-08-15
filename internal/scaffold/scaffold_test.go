@@ -233,3 +233,27 @@ func TestScaffoldRecordsFileHashes(t *testing.T) {
 		}
 	}
 }
+
+func TestRunRecordsRecipeSource(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "demo")
+	opts := baseOpts(target, nil)
+	opts.RecipeSource = "./recipes/my-recipe.yaml"
+	_, err := scaffold.Run(context.Background(), opts)
+	require.NoError(t, err)
+
+	lk, err := lock.Read(filepath.Join(target, ".scaffold.lock"))
+	require.NoError(t, err)
+	require.Equal(t, "./recipes/my-recipe.yaml", lk.RecipeSource)
+}
+
+func TestRunOmitsRecipeSourceForBuiltin(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "demo")
+	_, err := scaffold.Run(context.Background(), baseOpts(target, nil))
+	require.NoError(t, err)
+
+	b, err := os.ReadFile(filepath.Join(target, ".scaffold.lock"))
+	require.NoError(t, err)
+	// omitempty: a builtin recipe must not write the key at all, so an older
+	// keel reading this lock sees exactly what it wrote before.
+	require.NotContains(t, string(b), "recipe_source")
+}

@@ -20,6 +20,7 @@ import (
 type Options struct {
 	Target       string
 	Recipe       string
+	RecipeSource string // path a file-based recipe came from; empty for builtin
 	Language     string // recipe language; modules must be "any"/"" or match it
 	ModuleNames  []string
 	Loader       module.Loader
@@ -262,7 +263,11 @@ func writeLock(opts Options, manifests []manifest.Manifest, plan render.Plan) er
 		lmods[i] = lock.Module{Name: m.Name, Source: source, Version: version, Files: byModule[m.Name]}
 	}
 	return lock.Write(filepath.Join(opts.Target, ".scaffold.lock"), lock.Lock{
-		KeelVersion: opts.KeelVersion, Recipe: opts.Recipe, Modules: lmods, Answers: opts.Answers,
+		KeelVersion:  opts.KeelVersion,
+		Recipe:       opts.Recipe,
+		RecipeSource: opts.RecipeSource,
+		Modules:      lmods,
+		Answers:      opts.Answers,
 	})
 }
 
