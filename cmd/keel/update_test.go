@@ -11,9 +11,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/RomanAgaltsev/keel"
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/lock"
 	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/internal/recipe"
 	"github.com/RomanAgaltsev/keel/internal/update"
 )
 
@@ -171,11 +173,22 @@ func TestUpdateRequiresReconfigureForMissingRequiredAnswer(t *testing.T) {
 
 // TestUpdateNoCandidatesLeavesLockUntouched covers M1(a): when nothing is behind,
 // the lock is not rewritten just to bump keel_version.
+//
+// Since 2.1.0 the recipe is authoritative for composition, so "no candidates"
+// requires the lock to record *every* module the recipe names — a module it omits
+// is an addition, and updating is then exactly the right thing to do. Each is
+// pinned ahead of the embedded version so none is behind either.
 func TestUpdateNoCandidatesLeavesLockUntouched(t *testing.T) {
 	target := t.TempDir()
+	rec, err := recipe.Load(keel.BuiltinFS, "go-service")
+	require.NoError(t, err)
+	mods := make([]lock.Module, 0, len(rec.Modules))
+	for _, name := range rec.ModuleNames() {
+		mods = append(mods, lock.Module{Name: name, Source: "builtin", Version: "999.0.0"})
+	}
 	lk := lock.Lock{
 		KeelVersion: "0.0.0", Recipe: "go-service",
-		Modules: []lock.Module{{Name: "lint-go", Source: "builtin", Version: "999.0.0"}}, // ahead ⇒ not a candidate
+		Modules: mods, // every recipe module, all ahead ⇒ no candidates, no additions
 		Answers: fullAnswers(),
 	}
 	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
