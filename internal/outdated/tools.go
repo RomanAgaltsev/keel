@@ -23,10 +23,29 @@ type Report struct {
 	Modules         []ModuleUpdate
 	AddedModules    []string // named by the recipe, absent from this repo
 	OrphanedModules []string // recorded in the lock, no longer in the recipe
+	// Skipped names the checks that could not run, with the reason. A read-only
+	// command degrades rather than failing — but "I could not look" must never
+	// print as "there is nothing to fix", which is what an empty report means.
+	Skipped []SkippedCheck
 }
 
-// Empty reports whether nothing is outdated.
+// SkippedCheck is one check that did not run, and why.
+type SkippedCheck struct {
+	What   string // "modules", "composition", "tools"
+	Reason string
+}
+
+// Empty reports whether nothing is outdated. A report carrying skipped checks is
+// never empty: it has something to say even when it found no drift.
 func (r Report) Empty() bool {
+	return len(r.Tools) == 0 && len(r.Modules) == 0 &&
+		len(r.AddedModules) == 0 && len(r.OrphanedModules) == 0 &&
+		len(r.Skipped) == 0
+}
+
+// Clean reports whether every check ran and found nothing. It is the only
+// condition under which the command may claim the repo is up to date.
+func (r Report) Clean() bool {
 	return len(r.Tools) == 0 && len(r.Modules) == 0 &&
 		len(r.AddedModules) == 0 && len(r.OrphanedModules) == 0
 }

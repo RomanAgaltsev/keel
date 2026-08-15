@@ -45,13 +45,14 @@ func runOutdated(cmd *cobra.Command, path string, toolsOnly, modulesOnly bool) e
 	var rep outdated.Report
 
 	if !toolsOnly {
-		mods, added, orphaned, err := moduleUpdates(path)
+		mods, added, orphaned, skipped, err := moduleUpdates(path)
 		if err != nil {
 			return err
 		}
 		rep.Modules = mods
 		rep.AddedModules = added
 		rep.OrphanedModules = orphaned
+		rep.Skipped = append(rep.Skipped, skipped...)
 	}
 	if !modulesOnly {
 		tools, skipped, err := toolUpdates(cmd, path)
@@ -65,42 +66,70 @@ func runOutdated(cmd *cobra.Command, path string, toolsOnly, modulesOnly bool) e
 	}
 
 	printReport(out, rep)
-	if !rep.Empty() {
+
+	// Three outcomes, three codes — the same split `keel settings apply --check`
+	// uses, and for the same reason: CI must be able to tell "this repo is behind"
+	// from "keel could not look". Collapsing them is how `outdated` came to report
+	// success for a directory it never found a lock in.
+	switch {
+	case len(rep.Skipped) > 0:
+		return exitCodeError{code: 2, err: errors.New("one or more checks could not run")}
+	case !rep.Clean():
 		return errUpdatesAvailable
+	default:
+		return nil
 	}
-	return nil
 }
 
 // moduleUpdates reports version-behind modules plus the composition drift that
 // `keel update` would act on, so the two commands never disagree.
-func moduleUpdates(path string) ([]outdated.ModuleUpdate, []string, []string, error) {
-	lk, err := lock.Read(filepath.Join(path, ".scaffold.lock"))
-	if err != nil {
-		// No lock → nothing to compare; not an error.
-		return nil, nil, nil, nil //nolint:nilerr // a missing lock is a valid "nothing to check" state
+// moduleUpdates reports version-behind modules plus the composition drift that
+// `keel update` would act on, so the two commands never disagree.
+//
+// It degrades rather than failing — a read-only command should say what it can —
+// but every degradation is recorded in the report. Returning a clean report for a
+// check that never ran is how `outdated` came to answer "Everything is up to
+// date" for a directory it had not even found a lock in.
+func moduleUpdates(path string) (ups []outdated.ModuleUpdate, added, orphaned []string, skipped []outdated.SkippedCheck, err error) {
+	lk, lerr := lock.Read(filepath.Join(path, ".scaffold.lock"))
+	if lerr != nil {
+		return nil, nil, nil, []outdated.SkippedCheck{{
+			What:   "modules",
+			Reason: fmt.Sprintf("no .scaffold.lock in %q — not a keel-scaffolded repo, or the wrong --path", path),
+		}}, nil
 	}
 	l := module.NewFSLoader(keel.BuiltinFS)
-	ups, err := outdated.ModuleUpdates(l, lk.Modules)
+	ups, err = outdated.ModuleUpdates(l, lk.Modules)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	rec, _, _, _, rerr := resolveUpdateRecipe(lk, path, "")
-	if rerr != nil {
-		// Read-only command: report what we can rather than failing.
-		return ups, nil, nil, nil //nolint:nilerr // composition drift is best-effort here
+	added, orphaned, skipped = compositionDrift(lk, path)
+	return ups, added, orphaned, skipped, nil
+}
+
+// compositionDrift reports the modules the recipe has gained or dropped. Any step
+// it cannot complete becomes a SkippedCheck rather than a silent empty result.
+func compositionDrift(lk lock.Lock, path string) (added, orphaned []string, skipped []outdated.SkippedCheck) {
+	skip := func(reason string) ([]string, []string, []outdated.SkippedCheck) {
+		return nil, nil, []outdated.SkippedCheck{{What: "composition", Reason: reason}}
+	}
+
+	rec, _, _, _, err := resolveUpdateRecipe(lk, path, "")
+	if err != nil {
+		return skip(fmt.Sprintf("recipe %q could not be resolved: %v", lk.Recipe, err))
 	}
 	// Builtin-only composite: `outdated` never fetches external sources, so a
-	// recipe naming one simply yields no drift for that module.
+	// recipe naming one cannot be resolved here — which is reported, not hidden.
 	comp, err := module.NewComposite(keel.BuiltinFS, nil)
 	if err != nil {
-		return ups, nil, nil, nil //nolint:nilerr // ditto
+		return skip(fmt.Sprintf("module loader: %v", err))
 	}
 	ms, err := update.Resolve(lk, rec.ModuleNames(), compProvenance(comp), update.Options{})
 	if err != nil {
-		return ups, nil, nil, nil //nolint:nilerr // ditto
+		return skip(fmt.Sprintf("%v — run `keel update --dry-run` for the full picture", err))
 	}
-	return ups, ms.AddedModules(), ms.OrphanedModules(), nil
+	return ms.AddedModules(), ms.OrphanedModules(), nil
 }
 
 func toolUpdates(cmd *cobra.Command, path string) ([]outdated.ToolUpdate, int, error) {
@@ -142,9 +171,16 @@ func readPinFiles(path string) (map[string][]byte, error) {
 }
 
 func printReport(out io.Writer, rep outdated.Report) {
-	if rep.Empty() {
+	// Only a report where every check actually ran may claim the repo is current.
+	if rep.Clean() && len(rep.Skipped) == 0 {
 		fmt.Fprintln(out, "Everything is up to date.")
 		return
+	}
+	for _, s := range rep.Skipped {
+		fmt.Fprintf(out, "not checked (%s): %s\n", s.What, s.Reason)
+	}
+	if rep.Clean() {
+		fmt.Fprintln(out, "Everything that was checked is up to date.")
 	}
 	if len(rep.Tools) > 0 {
 		fmt.Fprintln(out, "Outdated tools/actions:")
