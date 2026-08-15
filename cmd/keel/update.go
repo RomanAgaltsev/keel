@@ -191,6 +191,7 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 		// working-tree changes.
 		staged := append([]string{}, applied.Updated...)
 		staged = append(staged, applied.New...)
+		staged = append(staged, applied.Deleted...)
 		staged = append(staged, ".scaffold.lock")
 		if err := commitUpdate(cmd.Context(), f.path, lk.Answers, staged); err != nil {
 			return err
@@ -309,13 +310,13 @@ func commitUpdate(ctx context.Context, path string, answers map[string]any, path
 // the report has to be actionable, or a consolidated workflow silently runs
 // alongside the four files it replaced.
 func reportRemoved(w io.Writer, a update.Applied) {
-	if len(a.Removed) == 0 {
+	if len(a.Kept) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "\n%d file(s) are no longer produced by keel and were left in place:\n\n", len(a.Removed))
+	fmt.Fprintf(w, "\n%d file(s) are no longer produced by keel and were left in place:\n\n", len(a.Kept))
 	// Apply sorts these (apply.go:56); sort a copy anyway so the output is
 	// deterministic for any caller, matching printApplied.
-	removed := append([]string{}, a.Removed...)
+	removed := append([]string{}, a.Kept...)
 	sort.Strings(removed)
 	for _, p := range removed {
 		fmt.Fprintf(w, "    rm %s\n", p)
@@ -337,7 +338,7 @@ func printApplied(out io.Writer, a update.Applied) {
 	line("updated", a.Updated)
 	line("new", a.New)
 	line("conflict", a.Conflicts)
-	line("removed", a.Removed)
+	line("removed", a.Kept)
 	fmt.Fprintf(out, "updated %d, new %d, conflicts %d, removed %d\n",
-		len(a.Updated), len(a.New), len(a.Conflicts), len(a.Removed))
+		len(a.Updated), len(a.New), len(a.Conflicts), len(a.Kept))
 }

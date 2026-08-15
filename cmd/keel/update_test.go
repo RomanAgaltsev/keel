@@ -318,8 +318,10 @@ func gitLog(t *testing.T, dir string) string {
 
 func TestUpdateReportsRemovedWithDeleteCommands(t *testing.T) {
 	var buf bytes.Buffer
+	// Kept, not Deleted: since 2.1.0 keel deletes the untouched retractions
+	// itself, so the actionable `rm` list is exactly the files the user edited.
 	applied := update.Applied{
-		Removed: []string{".github/workflows/codeql.yml", ".github/workflows/actionlint.yml"},
+		Kept: []string{".github/workflows/codeql.yml", ".github/workflows/actionlint.yml"},
 	}
 
 	reportRemoved(&buf, applied)
