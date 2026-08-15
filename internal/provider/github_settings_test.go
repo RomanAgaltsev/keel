@@ -304,3 +304,117 @@ func TestSecurityGroupSkippedWhenSectionAbsent(t *testing.T) {
 		require.Empty(t, changes)
 	}
 }
+
+func TestActionsGroupTranslatesLocalAndVerified(t *testing.T) {
+	bodies := map[string]map[string]any{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo/actions/permissions":
+			_, _ = w.Write([]byte(`{"enabled":true,"allowed_actions":"all"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo/actions/permissions/workflow":
+			_, _ = w.Write([]byte(`{"default_workflow_permissions":"write","can_approve_pull_request_reviews":true}`))
+		case r.Method == http.MethodPut:
+			var b map[string]any
+			raw, _ := io.ReadAll(r.Body)
+			require.NoError(t, json.Unmarshal(raw, &b))
+			bodies[r.URL.Path] = b
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "actions")
+
+	d := settings.Desired{Actions: &settings.Actions{
+		Allowed:                      ptr(settings.AllowedLocalAndVerified),
+		DefaultWorkflowPermissions:   ptr("read"),
+		CanApprovePullRequestReviews: ptr(false),
+	}}
+	changes, err := g.Plan(context.Background(), d)
+	require.NoError(t, err)
+	require.NoError(t, g.Apply(context.Background(), changes))
+
+	keys := make([]string, 0, len(changes))
+	for _, c := range changes {
+		keys = append(keys, c.Key)
+	}
+	require.ElementsMatch(t, []string{
+		"actions.allowed",
+		"actions.default_workflow_permissions",
+		"actions.can_approve_pull_request_reviews",
+	}, keys)
+
+	require.Equal(t, "selected", bodies["/repos/me/demo/actions/permissions"]["allowed_actions"],
+		"local_and_verified must translate to allowed_actions=selected")
+	sel := bodies["/repos/me/demo/actions/permissions/selected-actions"]
+	require.Equal(t, true, sel["github_owned_allowed"])
+	require.Equal(t, true, sel["verified_allowed"])
+	wf := bodies["/repos/me/demo/actions/permissions/workflow"]
+	require.Equal(t, "read", wf["default_workflow_permissions"])
+	require.Equal(t, false, wf["can_approve_pull_request_reviews"])
+}
+
+// TestActionsGroupNeverReadsSelectedActionsUnlessSelected pins a live finding
+// from 2026-08-15: GET …/selected-actions answers 409 Conflict — not 404, not
+// defaults — while allowed_actions is anything but "selected". Reading it
+// unconditionally would turn every "all" repo into a spurious group failure.
+func TestActionsGroupNeverReadsSelectedActionsUnlessSelected(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/repos/me/demo/actions/permissions/selected-actions" {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		_, _ = w.Write([]byte(`{"enabled":true,"allowed_actions":"all"}`))
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "actions").Plan(context.Background(), settings.Desired{
+		Actions: &settings.Actions{Allowed: ptr(settings.AllowedLocalOnly)},
+	})
+	require.NoError(t, err, "a 409 from selected-actions must never be reached")
+	require.Len(t, changes, 1)
+}
+
+func TestActionsGroupReadsSelectedActionsWhenSelected(t *testing.T) {
+	var writes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writes++
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		switch r.URL.Path {
+		case "/repos/me/demo/actions/permissions":
+			_, _ = w.Write([]byte(`{"enabled":true,"allowed_actions":"selected"}`))
+		case "/repos/me/demo/actions/permissions/selected-actions":
+			_, _ = w.Write([]byte(`{"github_owned_allowed":true,"verified_allowed":true,"patterns_allowed":[]}`))
+		default:
+			t.Fatalf("unexpected GET %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "actions").Plan(context.Background(), settings.Desired{
+		Actions: &settings.Actions{Allowed: ptr(settings.AllowedLocalAndVerified)},
+	})
+	require.NoError(t, err)
+	require.Empty(t, changes, "already local+verified must read as in sync")
+	require.Zero(t, writes)
+}
+
+func TestActionsGroupSkippedWhenSectionAbsent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		t.Fatal("no request may be made when the actions section is undeclared")
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "actions").Plan(context.Background(), settings.Desired{})
+	require.NoError(t, err)
+	require.Empty(t, changes)
+}
