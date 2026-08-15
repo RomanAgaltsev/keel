@@ -115,3 +115,35 @@ func TestReconcileCollectsUnsupported(t *testing.T) {
 	require.Equal(t, "security.dependency_graph", rep.Unsupported[0].Key)
 	require.True(t, rep.InSync(), "unsupported keys are not drift")
 }
+
+// lateUnsupportingGroup only learns what it cannot support by talking to the
+// provider, so it fills its unsupported list during Plan.
+type lateUnsupportingGroup struct {
+	fakeGroup
+	discovered []settings.Unsupported
+}
+
+func (l *lateUnsupportingGroup) Plan(_ context.Context, _ settings.Desired) ([]settings.Change, error) {
+	l.discovered = []settings.Unsupported{{Key: "ruleset.main", Provider: "github", Reason: "plan-gated on private repos"}}
+	return nil, nil
+}
+
+func (l *lateUnsupportingGroup) Unsupported(_ settings.Desired) []settings.Unsupported {
+	return l.discovered
+}
+
+// TestReconcileCollectsUnsupportedDiscoveredDuringPlan pins the ordering: some
+// limits are only knowable from the API's answer. GitHub rejects ruleset writes
+// on a private repo on the Free plan with 403 "Upgrade to GitHub Pro", which the
+// group turns into an Unsupported rather than a Failure — but it cannot know
+// that until it has asked. Querying Unsupported before Plan would drop it.
+func TestReconcileCollectsUnsupportedDiscoveredDuringPlan(t *testing.T) {
+	g := &lateUnsupportingGroup{fakeGroup: fakeGroup{name: "ruleset"}}
+
+	rep := settings.Reconcile(context.Background(), []settings.Group{g}, settings.Desired{}, true)
+
+	require.Len(t, rep.Unsupported, 1)
+	require.Equal(t, "ruleset.main", rep.Unsupported[0].Key)
+	require.Empty(t, rep.Failed, "an unsupported feature is not a failure")
+	require.True(t, rep.InSync())
+}

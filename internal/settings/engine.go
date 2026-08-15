@@ -69,10 +69,14 @@ type Unsupporter interface {
 func Reconcile(ctx context.Context, groups []Group, d Desired, apply bool) Report {
 	rep := Report{Applied: apply}
 	for _, g := range groups {
+		changes, err := g.Plan(ctx, d)
+		// Queried after Plan, and regardless of its outcome: some limits are only
+		// knowable from the provider's answer. GitHub rejects ruleset writes on a
+		// private repo on the Free plan, which the group reports as unsupported
+		// rather than failed — but it cannot know that until it has asked.
 		if u, ok := g.(Unsupporter); ok {
 			rep.Unsupported = append(rep.Unsupported, u.Unsupported(d)...)
 		}
-		changes, err := g.Plan(ctx, d)
 		if err != nil {
 			rep.Failed = append(rep.Failed, Failure{Group: g.Name(), Reason: err.Error()})
 			continue

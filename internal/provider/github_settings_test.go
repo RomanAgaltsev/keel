@@ -418,3 +418,163 @@ func TestActionsGroupSkippedWhenSectionAbsent(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, changes)
 }
+
+func desiredRuleset() settings.Desired {
+	return settings.Desired{Rulesets: []settings.Ruleset{{
+		Name:                     "keel: main",
+		Target:                   "branch",
+		Ref:                      "main",
+		RequiredStatusChecks:     []string{"lint", "test"},
+		RequiredApprovingReviews: ptr(0),
+		RequiredLinearHistory:    ptr(true),
+		BlockForcePush:           ptr(true),
+		BlockDeletion:            ptr(true),
+		Bypass:                   []string{settings.BypassRepoAdmin},
+	}}}
+}
+
+func TestRulesetGroupCreatesWhenAbsent(t *testing.T) {
+	var posted map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			require.Equal(t, "/repos/me/demo/rulesets", r.URL.Path)
+			_, _ = w.Write([]byte(`[{"id":9,"name":"someone elses rule"}]`))
+		case http.MethodPost:
+			b, _ := io.ReadAll(r.Body)
+			require.NoError(t, json.Unmarshal(b, &posted))
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":10}`))
+		default:
+			t.Fatalf("unexpected %s", r.Method)
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "ruleset")
+
+	changes, err := g.Plan(context.Background(), desiredRuleset())
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.Equal(t, `ruleset."keel: main"`, changes[0].Key)
+	require.Equal(t, "absent", changes[0].From)
+	require.NoError(t, g.Apply(context.Background(), changes))
+
+	require.Equal(t, "keel: main", posted["name"])
+	require.Equal(t, "active", posted["enforcement"])
+	rules, ok := posted["rules"].([]any)
+	require.True(t, ok)
+	types := make([]string, 0, len(rules))
+	for _, r := range rules {
+		types = append(types, r.(map[string]any)["type"].(string))
+	}
+	require.ElementsMatch(t,
+		[]string{"pull_request", "required_status_checks", "required_linear_history", "non_fast_forward", "deletion"},
+		types)
+
+	bypass := posted["bypass_actors"].([]any)[0].(map[string]any)
+	require.Equal(t, "RepositoryRole", bypass["actor_type"])
+	require.Equal(t, float64(5), bypass["actor_id"])
+}
+
+func TestRulesetGroupUpdatesExistingByName(t *testing.T) {
+	var putPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo/rulesets":
+			_, _ = w.Write([]byte(`[{"id":7,"name":"keel: main"}]`))
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/me/demo/rulesets/7":
+			_, _ = w.Write([]byte(`{"id":7,"name":"keel: main","target":"branch","enforcement":"active",
+				"conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]}},
+				"bypass_actors":[{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"}],
+				"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":0}},
+				         {"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"lint"}]}},
+				         {"type":"required_linear_history"},{"type":"non_fast_forward"},{"type":"deletion"}]}`))
+		case r.Method == http.MethodPut:
+			putPath = r.URL.Path
+			_, _ = w.Write([]byte(`{"id":7}`))
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "ruleset")
+
+	changes, err := g.Plan(context.Background(), desiredRuleset())
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.Contains(t, changes[0].From, "lint")
+	require.NoError(t, g.Apply(context.Background(), changes))
+	require.Equal(t, "/repos/me/demo/rulesets/7", putPath, "an existing ruleset is updated in place, not duplicated")
+}
+
+func TestRulesetGroupInSyncIssuesNoWrite(t *testing.T) {
+	var writes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writes++
+		}
+		switch r.URL.Path {
+		case "/repos/me/demo/rulesets":
+			_, _ = w.Write([]byte(`[{"id":7,"name":"keel: main"}]`))
+		case "/repos/me/demo/rulesets/7":
+			_, _ = w.Write([]byte(`{"id":7,"name":"keel: main","target":"branch","enforcement":"active",
+				"conditions":{"ref_name":{"include":["refs/heads/main"],"exclude":[]}},
+				"bypass_actors":[{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"}],
+				"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":0}},
+				         {"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"lint"},{"context":"test"}]}},
+				         {"type":"required_linear_history"},{"type":"non_fast_forward"},{"type":"deletion"}]}`))
+		}
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "ruleset").Plan(context.Background(), desiredRuleset())
+	require.NoError(t, err)
+	require.Empty(t, changes, "an identical ruleset must produce no change")
+	require.Zero(t, writes)
+}
+
+// TestRulesetGroupReportsPlanGatingAsUnsupported pins the finding that decided
+// this group's error handling. Verified live 2026-08-15: POST /rulesets on a
+// private repo on the Free plan answers 403 "Upgrade to GitHub Pro or make this
+// repository public to enable this feature." That is not a failure the user can
+// fix by fixing their token or their file, so it belongs in Unsupported — and a
+// scaffold of a private repo must not print a scary error over it.
+func TestRulesetGroupReportsPlanGatingAsUnsupported(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"message":"Upgrade to GitHub Pro or make this repository public to enable this feature."}`))
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "ruleset")
+
+	changes, err := g.Plan(context.Background(), desiredRuleset())
+	require.NoError(t, err, "plan gating must not surface as a group failure")
+	require.Empty(t, changes)
+
+	u, ok := g.(settings.Unsupporter)
+	require.True(t, ok, "the ruleset group must implement Unsupporter")
+	un := u.Unsupported(desiredRuleset())
+	require.Len(t, un, 1)
+	require.Equal(t, `ruleset."keel: main"`, un[0].Key)
+	require.Equal(t, "github", un[0].Provider)
+	require.Contains(t, un[0].Reason, "Upgrade to GitHub Pro")
+}
+
+func TestRulesetGroupSkippedWhenAbsentFromFile(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		t.Fatal("no request may be made when no ruleset is declared")
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "ruleset").Plan(context.Background(), settings.Desired{})
+	require.NoError(t, err)
+	require.Empty(t, changes)
+}
