@@ -342,3 +342,43 @@ func TestUpdateSaysNothingWhenNothingRemoved(t *testing.T) {
 	reportRemoved(&buf, update.Applied{})
 	require.Empty(t, buf.String())
 }
+
+func TestPrintAddedModulesCountsFiles(t *testing.T) {
+	var buf bytes.Buffer
+	ms := update.ModuleSet{
+		State:       map[string]update.State{"license": update.Added, "governance": update.Added},
+		RecipeOrder: []string{"license", "governance"},
+	}
+	owner := map[string]string{
+		"LICENSE":                 "license",
+		"SECURITY.md":             "governance",
+		".editorconfig":           "governance",
+		".github/CODEOWNERS":      "governance",
+		".github/workflows/x.yml": "lint-go",
+	}
+	printAddedModules(&buf, ms, owner)
+
+	out := buf.String()
+	require.Contains(t, out, "added module  license              (1 file)")
+	require.Contains(t, out, "added module  governance           (3 files)")
+	require.NotContains(t, out, "lint-go")
+	require.Less(t, strings.Index(out, "license"), strings.Index(out, "governance"),
+		"added modules are listed in recipe order")
+}
+
+func TestPrintAddedModulesSilentWhenNoneAdded(t *testing.T) {
+	var buf bytes.Buffer
+	printAddedModules(&buf, update.ModuleSet{State: map[string]update.State{}}, map[string]string{})
+	require.Empty(t, buf.String())
+}
+
+func TestReportRemovedReportsKeptOnly(t *testing.T) {
+	var buf bytes.Buffer
+	reportRemoved(&buf, update.Applied{
+		Deleted: []string{".github/workflows/codeql.yml"},
+		Kept:    []string{".github/workflows/govulncheck.yml"},
+	})
+	out := buf.String()
+	require.Contains(t, out, "rm .github/workflows/govulncheck.yml")
+	require.NotContains(t, out, "codeql.yml", "deleted files need no instructions")
+}

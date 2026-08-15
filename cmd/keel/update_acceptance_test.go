@@ -67,9 +67,8 @@ func TestUpdateAddsModulesTheRecipeGained(t *testing.T) {
 	for _, path := range []string{"LICENSE", "CONTRIBUTING.md", "SECURITY.md", ".editorconfig"} {
 		require.FileExists(t, filepath.Join(repo, path), "expected %s from a recipe-gained module", path)
 	}
-	// Task 8 adds printAddedModules; restored there.
-	// require.Contains(t, out, "added module")
-	// require.Contains(t, out, "license")
+	require.Contains(t, out, "added module")
+	require.Contains(t, out, "license")
 }
 
 // TestUpdateIsIdempotentAcrossAddition guards §8 of the spec: the added modules

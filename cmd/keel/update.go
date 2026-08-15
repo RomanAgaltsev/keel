@@ -111,6 +111,7 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 	}
 
 	if f.dryRun {
+		printAddedModules(out, ms, plan.Owner())
 		printUpdatePlan(out, up, true, f.overwrite)
 		return nil
 	}
@@ -182,6 +183,7 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 	if err := lock.Write(lockPath, newLock); err != nil {
 		return err
 	}
+	printAddedModules(out, ms, plan.Owner())
 	printApplied(out, applied)
 	reportRemoved(out, applied)
 
@@ -305,23 +307,54 @@ func commitUpdate(ctx context.Context, path string, answers map[string]any, path
 	return repo.Commit(ctx, "chore: keel update")
 }
 
-// reportRemoved prints the files that keel no longer produces. Apply deliberately
-// leaves them on disk - deleting user files on an update is not keel's call - so
-// the report has to be actionable, or a consolidated workflow silently runs
-// alongside the four files it replaced.
+// printAddedModules announces modules the recipe gained since this repo was
+// scaffolded. Without it the addition is invisible: the files simply appear in
+// the `new` list, indistinguishable from a new file in a module the repo
+// already had.
+func printAddedModules(w io.Writer, ms update.ModuleSet, owner map[string]string) {
+	added := ms.AddedModules()
+	if len(added) == 0 {
+		return
+	}
+	counts := map[string]int{}
+	for _, mod := range owner {
+		counts[mod]++
+	}
+	for _, name := range added {
+		fmt.Fprintf(w, "added module  %-20s (%s)\n", name, plural(counts[name], "file"))
+	}
+}
+
+// plural renders "1 file" / "3 files".
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// reportRemoved prints the files keel no longer produces but did not delete,
+// because the user edited them. Deleted files are already listed by
+// printApplied; these are the only ones that still need a decision.
 func reportRemoved(w io.Writer, a update.Applied) {
 	if len(a.Kept) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "\n%d file(s) are no longer produced by keel and were left in place:\n\n", len(a.Kept))
-	// Apply sorts these (apply.go:56); sort a copy anyway so the output is
-	// deterministic for any caller, matching printApplied.
-	removed := append([]string{}, a.Kept...)
-	sort.Strings(removed)
-	for _, p := range removed {
+	fmt.Fprintf(w, "\n%s you edited %s no longer produced by keel:\n\n",
+		plural(len(a.Kept), "file"), isAre(len(a.Kept)))
+	kept := append([]string{}, a.Kept...)
+	sort.Strings(kept)
+	for _, p := range kept {
 		fmt.Fprintf(w, "    rm %s\n", p)
 	}
 	fmt.Fprint(w, "\nReview them, then delete the ones you no longer want.\n")
+}
+
+func isAre(n int) string {
+	if n == 1 {
+		return "is"
+	}
+	return "are"
 }
 
 // printApplied prints the per-class summary, deterministically.
@@ -338,7 +371,19 @@ func printApplied(out io.Writer, a update.Applied) {
 	line("updated", a.Updated)
 	line("new", a.New)
 	line("conflict", a.Conflicts)
-	line("removed", a.Kept)
-	fmt.Fprintf(out, "updated %d, new %d, conflicts %d, removed %d\n",
-		len(a.Updated), len(a.New), len(a.Conflicts), len(a.Kept))
+	for _, p := range sorted(a.Deleted) {
+		fmt.Fprintf(out, "%-9s %s (deleted)\n", "removed", p)
+	}
+	for _, p := range sorted(a.Kept) {
+		fmt.Fprintf(out, "%-9s %s (edited — left in place)\n", "removed", p)
+	}
+	fmt.Fprintf(out, "updated %d, new %d, conflicts %d, deleted %d, left %d\n",
+		len(a.Updated), len(a.New), len(a.Conflicts), len(a.Deleted), len(a.Kept))
+}
+
+// sorted returns a sorted copy, so printing never mutates the caller's slice.
+func sorted(in []string) []string {
+	out := append([]string{}, in...)
+	sort.Strings(out)
+	return out
 }
