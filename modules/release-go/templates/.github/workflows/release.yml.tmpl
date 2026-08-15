@@ -8,10 +8,11 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      released: ${{ steps.rp.outputs.release_created }}
+      released: {{"${{ steps.rp.outputs.release_created }}"}}
     steps:
       - uses: googleapis/release-please-action@v4
         id: rp
+{{- if not .is_library }}
   goreleaser:
     needs: release-please
     if: needs.release-please.outputs.released == 'true'
@@ -25,4 +26,5 @@ jobs:
         with: { go-version-file: go.mod }
       - uses: goreleaser/goreleaser-action@v6
         with: { args: release --clean }
-        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        env: { GITHUB_TOKEN: "{{"${{ secrets.GITHUB_TOKEN }}"}}" }
+{{- end }}

@@ -112,3 +112,33 @@ func TestContributingLibraryHasNoBuildLine(t *testing.T) {
 	require.Contains(t, c, "task ci")
 	require.Contains(t, c, "task setup")
 }
+
+func TestReleaseGoLibraryDropsGoReleaser(t *testing.T) {
+	plan := libraryPlan(t, "base-layout", "release-go")
+	require.NotContains(t, plan.Files, ".goreleaser.yaml")
+
+	wf := plan.Files[".github/workflows/release.yml"]
+	require.NotContains(t, wf, "goreleaser")
+	// release-please still tags and writes the changelog.
+	require.Contains(t, wf, "googleapis/release-please-action@")
+	require.Contains(t, plan.Files, "release-please-config.json")
+	require.Contains(t, plan.Files, ".github/workflows/pr-title.yml")
+}
+
+// TestReleaseGoServiceWorkflowSurvivesTemplating is the other half: release.yml
+// became a .tmpl in this task, so GitHub's ${{ }} had to be escaped. An escape
+// that is wrong renders as an empty string and silently breaks releases.
+func TestReleaseGoServiceWorkflowSurvivesTemplating(t *testing.T) {
+	l := module.NewFSLoader(keel.BuiltinFS)
+	plan, err := render.BuildRecipe(l, []string{"base-layout", "release-go"}, answers.Answers{
+		"repo_name": "demo", "description": "d",
+		"module_path": "github.com/acme/demo", "provider": "github",
+	})
+	require.NoError(t, err)
+
+	wf := plan.Files[".github/workflows/release.yml"]
+	require.Contains(t, wf, "${{ steps.rp.outputs.release_created }}")
+	require.Contains(t, wf, "${{ secrets.GITHUB_TOKEN }}")
+	require.Contains(t, wf, "goreleaser/goreleaser-action@")
+	require.NotContains(t, wf, `{{"`) // no un-rendered escape hatch left behind
+}
