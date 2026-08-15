@@ -16,6 +16,7 @@ func newRootCmd() *cobra.Command {
 		newConfigCmd(),
 		newOutdatedCmd(),
 		newUpdateCmd(),
+		newSettingsCmd(),
 	)
 	return root
 }
