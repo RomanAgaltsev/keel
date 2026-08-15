@@ -62,3 +62,35 @@ jobs:
           go mod tidy
           task setup
           task ci
+
+  scaffold-library:
+    name: scaffold a go-library repo and run its gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: go.mod }
+      - uses: arduino/setup-task@v3
+        with: { version: 3.x, repo-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: task build
+      - run: ./bin/keel new --no-input --recipe go-library --answers testdata/meta/answers-library.yaml --target /tmp/metalib
+      - name: Run the scaffolded library's own gate
+        working-directory: /tmp/metalib
+        run: |
+          go mod tidy
+          task setup
+          task ci
+      - name: The library scaffold must carry no binary machinery
+        working-directory: /tmp/metalib
+        run: |
+          set -e
+          test ! -e cmd
+          test ! -e .goreleaser.yaml
+          # `! grep ...` under set -e is a no-op assertion (shellcheck SC2251):
+          # the negation suppresses errexit, so it passes either way. Use an if.
+          if grep -q '^  build:' Taskfile.yml; then
+            echo "Taskfile still has a build task"; exit 1
+          fi
+          if grep -q goreleaser .github/workflows/release.yml; then
+            echo "release.yml still has a goreleaser job"; exit 1
+          fi

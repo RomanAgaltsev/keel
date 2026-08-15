@@ -1,7 +1,7 @@
 # Recipes
 
-A recipe is a YAML file with three fields — `name`, `language`, and `modules`.
-The built-in `go-service` and `rust-service` recipes are embedded in the binary,
+A recipe is a YAML file with four fields — `name`, `language`, `archetype`, and
+`modules`. The built-in recipes are embedded in the binary,
 but `--recipe` also accepts a **file path**, so you can ship your own:
 
 ```bash
@@ -31,7 +31,30 @@ modules:
 |-------|---------|
 | `name` | The recipe's name. |
 | `language` | `go`, `rust`, or `any` — the recipe's toolchain. |
+| `archetype` | `service` (default), `library`, or `cli` — whether the repo produces a binary. |
 | `modules` | Ordered module list: built-in names and/or external entries. |
+
+## Archetypes
+
+`archetype` tells the modules whether the repo produces a binary. Omit it and you
+get `service`, which is what every recipe before this field did.
+
+A `library` recipe drops the `cmd/<name>` entrypoint, the Taskfile's `build` task
+and its ldflags, the `task build` lines in README and CONTRIBUTING,
+`.goreleaser.yaml`, and the `goreleaser` job in `release.yml`. It keeps
+release-please, so a library is still tagged and still gets a changelog. In its
+place `go-mod` emits `doc.go`, `<name>.go` and `<name>_test.go`.
+
+`cli` behaves exactly like `service` today — a CLI is a binary. It exists so that
+recipes can declare what they are.
+
+Templates never test `archetype` directly. Rendering derives two more keys from
+it, and those are what modules use:
+
+| Key | Meaning |
+|-----|---------|
+| `is_library` | `true` only for `archetype: library`; every `when:` and template guard uses this |
+| `package_name` | `repo_name` reduced to a legal Go package name (`go-thing` → `gothing`) |
 
 ## Language consistency
 

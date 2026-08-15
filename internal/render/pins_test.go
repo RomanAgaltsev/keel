@@ -6,24 +6,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/v2"
-	"github.com/RomanAgaltsev/keel/v2/internal/module"
-	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
 	"github.com/RomanAgaltsev/keel/v2/internal/render"
 )
 
+// recipePlan renders a builtin recipe with its declared archetype, so the pin
+// checks see exactly what a scaffolded repo receives.
 func recipePlan(t *testing.T, name string) render.Plan {
 	t.Helper()
-	l := module.NewFSLoader(keel.BuiltinFS)
-	rec, err := recipe.Load(keel.BuiltinFS, name)
-	require.NoError(t, err)
-	plan, err := render.BuildRecipe(l, rec.ModuleNames(), goldenAnswers(name))
-	require.NoError(t, err)
-	return plan
+	return planForRecipe(t, name)
 }
 
 func TestNoStaleActionPins(t *testing.T) {
-	for _, rec := range []string{"go-service", "rust-service"} {
+	for _, rec := range []string{"go-service", "rust-service", "go-library"} {
 		plan := recipePlan(t, rec)
 		for path, content := range plan.Files {
 			if !strings.HasPrefix(path, ".github/workflows/") {
@@ -40,7 +34,7 @@ func TestWorkflowsDoNotPinToolVersions(t *testing.T) {
 	// The Taskfile owns tool versions. A workflow that pins golangci-lint too
 	// is a second source of truth, and the two drifted by nine minor versions
 	// before this test existed.
-	for _, rec := range []string{"go-service", "rust-service"} {
+	for _, rec := range []string{"go-service", "rust-service", "go-library"} {
 		plan := recipePlan(t, rec)
 		for path, content := range plan.Files {
 			if !strings.HasPrefix(path, ".github/workflows/") {

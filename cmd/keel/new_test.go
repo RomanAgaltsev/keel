@@ -64,3 +64,48 @@ create_remote: false
 `), 0o644))
 	return p
 }
+
+// TestNewLibraryRecipeScaffoldsALibrary is the end-to-end proof that the recipe's
+// archetype reaches rendering. Everything below this line is exercised by unit
+// tests too, but nothing else checks that `keel new --recipe go-library` wires
+// them together.
+func TestNewLibraryRecipeScaffoldsALibrary(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "demo")
+
+	cmd := newNewCmd()
+	cmd.SetArgs([]string{
+		"--no-input",
+		"--recipe", "go-library",
+		"--answers", writeAnswers(t),
+		"--target", target,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.FileExists(t, filepath.Join(target, "doc.go"))
+	require.FileExists(t, filepath.Join(target, "demo.go"))
+	require.FileExists(t, filepath.Join(target, "demo_test.go"))
+	require.NoFileExists(t, filepath.Join(target, ".goreleaser.yaml"))
+	require.NoDirExists(t, filepath.Join(target, "cmd"))
+
+	taskfile, err := os.ReadFile(filepath.Join(target, "Taskfile.yml"))
+	require.NoError(t, err)
+	require.NotContains(t, string(taskfile), "\n  build:")
+}
+
+// TestNewDefaultRecipeStillScaffoldsAService is the control: the same command
+// without --recipe must be unchanged by the archetype work.
+func TestNewDefaultRecipeStillScaffoldsAService(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "demo")
+
+	cmd := newNewCmd()
+	cmd.SetArgs([]string{
+		"--no-input",
+		"--answers", writeAnswers(t),
+		"--target", target,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.FileExists(t, filepath.Join(target, "cmd", "demo", "main.go"))
+	require.FileExists(t, filepath.Join(target, ".goreleaser.yaml"))
+	require.NoFileExists(t, filepath.Join(target, "doc.go"))
+}

@@ -35,6 +35,9 @@ func (p Plan) Owner() map[string]string {
 // BuildPlan renders every module in order and merges the results, failing fast
 // on any cross-module destination collision.
 func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
+	// Templates are parsed with missingkey=error, so the archetype-derived keys
+	// must exist before any template runs. Deriving here covers every caller.
+	a = answers.Derive(a)
 	p := Plan{
 		Files: map[string]string{},
 		owner: map[string]string{},

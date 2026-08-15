@@ -11,7 +11,8 @@
 - keel list / config / version.
 
 ## Concepts
-- Recipe: a named composition of modules (go-service, rust-service, or a user file).
+- Recipe: a named composition of modules (go-service, go-library, rust-service, or a user file).
+- Archetype: a recipe declares service (default), library or cli; a library scaffold has no cmd/, no GoReleaser and no task build.
 - Module: module.yaml manifest + templates/ tree; questions + files (with when-conditions).
 - Providers: github, gitlab, bitbucket, sourcecraft (tokens from env), or none.
 - .scaffold.lock records recipe/modules/answers + per-file hashes for keel update.

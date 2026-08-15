@@ -14,7 +14,7 @@ keel new --recipe go-service
 
 | Flag | Default | Effect |
 |------|---------|--------|
-| `--recipe` | `go-service` | Recipe to use — a built-in name or a path to a recipe file. |
+| `--recipe` | `go-service` | Recipe to use — a built-in name (`go-service`, `go-library`, `rust-service`) or a path to a recipe file. |
 | `--target` | repo name | Target directory. |
 | `--answers` | — | Read answers from a YAML file. |
 | `--no-input` | `false` | Never prompt; fail if a required answer is missing (CI mode). |

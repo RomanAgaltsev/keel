@@ -1,6 +1,6 @@
 name: go-mod
-description: Go module and cmd/<name> entrypoint
-version: 2.0.0
+description: Go module with a cmd/<name> entrypoint (service, cli) or a root package (library)
+version: 2.1.0
 language: go
 requires: [base-layout]
 files: # dest is always "." — src carries the subdir
@@ -8,3 +8,13 @@ files: # dest is always "." — src carries the subdir
     dest: "."
   - src: "cmd/{{.repo_name}}/main.go.tmpl"
     dest: "."
+    when: '{{ not .is_library }}'
+  - src: "doc.go.tmpl"
+    dest: "."
+    when: '{{ .is_library }}'
+  - src: "{{.repo_name}}.go.tmpl"
+    dest: "."
+    when: '{{ .is_library }}'
+  - src: "{{.repo_name}}_test.go.tmpl"
+    dest: "."
+    when: '{{ .is_library }}'

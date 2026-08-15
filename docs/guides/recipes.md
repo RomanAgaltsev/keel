@@ -5,16 +5,17 @@ single-purpose modules that `keel` assembles into one repository. You pick a
 recipe; `keel` resolves it into its ordered modules, asks their combined
 questions, and renders the result.
 
-## The two built-in recipes
+## The built-in recipes
 
-`keel` ships two recipes embedded in the binary:
+`keel` ships these recipes embedded in the binary:
 
 | Recipe | Language | Modules |
 |--------|----------|---------|
 | `go-service` | go | `base-layout`, `go-mod`, `taskfile-go`, `lint-go`, `test-go`, `security-go`, `dep-bots-go`, `release-go`, `spell`, `license`, `governance`, `contributing-go`, `community-templates` |
+| `go-library` | go | same module list as `go-service`, with `archetype: library` — no `cmd/`, no GoReleaser, no `task build` |
 | `rust-service` | rust | `base-layout`, `cargo-mod`, `taskfile-rust`, `lint-rust`, `test-rust`, `security-rust`, `release-rust`, `dep-bots-rust`, `spell`, `license`, `governance`, `contributing-rust`, `community-templates` |
 
-`go-service` is the default — `keel new` with no `--recipe` uses it. Both share
+`go-service` is the default — `keel new` with no `--recipe` uses it. They share
 the language-agnostic `base-layout` and `spell` modules; everything else is the
 per-language variant.
 
@@ -31,6 +32,7 @@ the authoritative answer for the version you have installed.
 
 ```bash
 keel new --recipe go-service
+keel new --recipe go-library
 keel new --recipe rust-service
 ```
 

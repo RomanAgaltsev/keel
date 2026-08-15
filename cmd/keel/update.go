@@ -80,6 +80,9 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 	if err != nil {
 		return err
 	}
+	// Re-supplied from the freshly resolved recipe on every update, so a
+	// hand-edited value in the lock's answers can never win.
+	ans["archetype"] = rec.Archetype
 
 	if f.modules != "" {
 		warnUnknownModules(out, lk, splitCSV(f.modules))

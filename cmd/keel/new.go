@@ -86,6 +86,9 @@ func runNew(cmd *cobra.Command, f *newFlags) error {
 	if err != nil {
 		return err
 	}
+	// The recipe owns the archetype; render.BuildPlan derives is_library and
+	// package_name from it. Setting it here is also what persists it to the lock.
+	ans["archetype"] = rec.Archetype
 
 	target := f.target
 	if target == "" {
