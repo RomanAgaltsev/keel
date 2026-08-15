@@ -36,6 +36,15 @@ cargo-audit + cargo-deny security scans, and a release-plz + cargo-dist pipeline
 keel new --recipe rust-service
 ```
 
+Not everything is a service. `go-library` composes the same discipline modules
+but declares `archetype: library`, so the scaffold has no `cmd/<name>`, no
+GoReleaser and no `task build` — a root package with `doc.go` and a test instead.
+release-please still tags it and writes its changelog:
+
+```bash
+keel new --recipe go-library
+```
+
 ## Why keel?
 
 - **Composition over monoliths.** A repository is assembled from independent

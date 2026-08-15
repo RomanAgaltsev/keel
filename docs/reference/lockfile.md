@@ -58,3 +58,13 @@ preserve, write `.keel-new`).
 
 A v1 lockfile predates per-file hashes (no `files` under each module). keel
 reads v1 locks transparently and upgrades them to v2 on the first `keel update`.
+
+## `archetype` in `answers`
+
+Locks written by keel 2.x record `archetype` in `answers`. It is **informational**:
+`keel update` re-reads it from the recipe named in `recipe:` and overwrites it, so
+editing it here changes nothing. To change a repo's archetype, point it at a
+different recipe.
+
+`is_library` and `package_name` never appear in a lockfile. They are derived from
+`archetype` and `repo_name` during rendering, not answered.

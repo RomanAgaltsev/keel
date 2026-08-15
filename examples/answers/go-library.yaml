@@ -1,0 +1,16 @@
+# Go library — same modules as go-service, no binary. Run:
+#   keel new --recipe go-library --answers examples/answers/go-library.yaml --no-input
+repo_name: demo-lib
+description: A demo Go library scaffolded by keel
+module_path: github.com/you/demo-lib
+author_name: Your Name
+author_email: you@example.com
+license: MIT
+visibility: public
+provider: github
+create_remote: true
+# go-library module questions (shown with their defaults):
+dep_bot: renovate # dependabot | renovate | none
+enable_codeql: true
+enable_govulncheck: true
+enable_codecov: false
