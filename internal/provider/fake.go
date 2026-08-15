@@ -1,6 +1,10 @@
 package provider
 
-import "context"
+import (
+	"context"
+
+	"github.com/RomanAgaltsev/keel/v2/internal/settings"
+)
 
 // Fake is an in-memory Provider for tests. Configure Exists/Repo/errors.
 // Inspect Created after a run.
@@ -30,3 +34,15 @@ func (f *Fake) CreateRepo(_ context.Context, _ RepoSpec) (RemoteRepo, error) {
 	f.Created = true
 	return f.Repo, nil
 }
+
+// FakeApplier is a Fake that also implements SettingsApplier, for tests that
+// exercise the settings step. Kept as a distinct type rather than a flag on Fake
+// so that a test wanting an *unsupported* provider simply uses plain *Fake and
+// the type assertion in scaffold does the rest.
+type FakeApplier struct {
+	Fake
+	Groups []settings.Group
+}
+
+// SettingsGroups returns the configured groups, ignoring the spec.
+func (f *FakeApplier) SettingsGroups(_ RepoSpec) []settings.Group { return f.Groups }

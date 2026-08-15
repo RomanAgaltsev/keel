@@ -143,6 +143,9 @@ func printResult(out io.Writer, target string, res scaffold.Result) {
 	}
 	fmt.Fprintf(out, "%s %q (local=%v, remote=%v)\n", verb, target, res.State.LocalPresent, res.State.RemotePresent)
 	fmt.Fprintf(out, "  written: %d, skipped: %d\n", len(res.Written), len(res.Skipped))
+	if res.Settings != nil {
+		res.Settings.Render(out)
+	}
 	for _, s := range res.NextSteps {
 		fmt.Fprintf(out, "  next: %s\n", s)
 	}

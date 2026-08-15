@@ -45,12 +45,20 @@ Run `task ci` and make sure it is green.
 
 ## Maintainer setup (one-time)
 
-These steps need repo-admin access and cannot be committed as code:
+One step needs repo-admin access and cannot be committed as code:
 
 - [ ] **Codecov:** add the repo at codecov.io and set the `CODECOV_TOKEN` repo secret
   (`Settings → Secrets and variables → Actions`).
-- [ ] **Private vulnerability reporting:** enable it under `Settings → Code security`.
-- [ ] **Branch protection** on `main`: require the pull-request checks this recipe emits —
-  `lint`, `test`, `typos`, `pr-title`, `actionlint` and `review`, plus `audit`, `deny` and `coverage`
-  when those are enabled. Names are the **job** names in `.github/workflows/`; a required
-  check that never reports blocks every pull request.
+
+Everything else that used to be on this list — branch protection, private vulnerability
+reporting, Dependabot alerts, the Actions policy and the merge policy — is declared in
+[`.github/keel-settings.yml`](.github/keel-settings.yml) and applied by keel:
+
+```bash
+keel settings apply           # converge the remote to the file
+keel settings apply --check   # report drift without changing anything (task keel:settings)
+```
+
+It needs a token with `administration:write` on this repository. keel converges only the
+keys the file names and leaves everything else alone, so it is safe to run against a repo
+you have also tuned by hand.

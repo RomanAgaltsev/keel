@@ -1,0 +1,8 @@
+name: repo-settings-rust
+description: Declarative remote repo settings (security, rulesets, Actions policy, merge policy)
+version: 1.0.0
+language: rust
+requires: [base-layout]
+files:
+  - src: ".github/keel-settings.yml.tmpl"
+    dest: "."

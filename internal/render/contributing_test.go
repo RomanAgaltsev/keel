@@ -30,12 +30,15 @@ func TestContributingGo(t *testing.T) {
 	require.Contains(t, got, "`demo` is a Go module at `github.com/acme/demo`")
 	require.Contains(t, got, "gofumpt")
 	require.Contains(t, got, "depguard")
-	// The required-check list must name the job names the Go recipe's workflows
-	// actually define; a required check that never reports blocks every PR.
-	// security-go emits one security.yml whose jobs are codeql / govulncheck /
-	// dependency-review / actionlint.
-	require.Contains(t, got, "`dependency-review`")
-	require.Contains(t, got, "`codeql` and\n  `govulncheck` when those are enabled")
+	// The required-check list used to be spelled out here, as a checklist for a
+	// human to enter by hand. It now lives in .github/keel-settings.yml, where
+	// TestRepoSettingsGoChecksMatchEmittedJobNames pins it against the emitted job
+	// names — so this file must point at that instead of restating it, or the two
+	// copies will drift and only one of them is enforced.
+	require.Contains(t, got, "keel settings apply")
+	require.Contains(t, got, ".github/keel-settings.yml")
+	require.NotContains(t, got, "**Branch protection**",
+		"branch protection is keel's job now, not a manual checklist item")
 	require.NotContains(t, got, "cargo")
 }
 
@@ -47,7 +50,11 @@ func TestContributingRust(t *testing.T) {
 	got := plan.Files["CONTRIBUTING.md"]
 	require.Contains(t, got, "`demo` is a Rust crate")
 	require.Contains(t, got, "cargo nextest")
-	require.Contains(t, got, "`audit`, `deny` and `coverage`")
+	// See the Go test: the check list moved to .github/keel-settings.yml, guarded
+	// by TestRepoSettingsRustChecksMatchEmittedJobNames.
+	require.Contains(t, got, "keel settings apply")
+	require.Contains(t, got, ".github/keel-settings.yml")
+	require.NotContains(t, got, "**Branch protection**")
 	require.NotContains(t, got, "gofumpt")
 	require.NotContains(t, got, "govulncheck")
 }

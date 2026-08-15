@@ -15,4 +15,5 @@ modules:
     governance,
     contributing-rust,
     community-templates,
+    repo-settings-rust,
   ]

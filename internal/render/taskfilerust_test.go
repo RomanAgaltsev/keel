@@ -40,3 +40,11 @@ func TestTaskfileRustExposesKeelTasks(t *testing.T) {
 	require.Contains(t, got, "keel:update:")
 	require.NotContains(t, taskBlock(t, got, "ci"), "keel")
 }
+
+// TestTaskfileRustExposesKeelSettingsCheck is the Rust half of the read-only
+// settings affordance; see the Go test for why it must stay out of the ci gate.
+func TestTaskfileRustExposesKeelSettingsCheck(t *testing.T) {
+	got := taskfileRust(t)
+	require.Contains(t, got, "keel:settings:")
+	require.Contains(t, got, "keel settings apply --check")
+}

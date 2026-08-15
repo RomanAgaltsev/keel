@@ -1,6 +1,6 @@
 name: taskfile-go
 description: Taskfile with project-local bin/ tooling, build and a ci gate
-version: 2.0.0
+version: 2.1.0
 language: go
 requires: [base-layout]
 files:

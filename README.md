@@ -110,6 +110,7 @@ create_remote: true
 | `keel version` | Print version, commit, and build date. |
 | `keel outdated` | Report which of a repo's keel modules have newer versions available. |
 | `keel update` | Re-apply evolved module templates to an existing repo (hash-aware overlay; user edits are preserved as `.keel-new`). |
+| `keel settings apply` | Converge the remote repository's settings (branch ruleset, security toggles, Actions and merge policy) to `.github/keel-settings.yml`; `--check` reports drift. |
 
 
 ### `keel new` flags
