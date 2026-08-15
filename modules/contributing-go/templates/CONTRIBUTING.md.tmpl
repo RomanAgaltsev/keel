@@ -19,8 +19,8 @@ task ci         # full local gate: tidy, vet, lint, race tests
 task lint       # golangci-lint (strict ruleset)
 task format     # gofumpt + gci
 task test       # race + shuffled tests
-task build      # build ./bin/{{ .repo_name }}
-```
+{{ if not .is_library }}task build      # build ./bin/{{ .repo_name }}
+{{ end }}```
 
 ## Commit & PR conventions
 

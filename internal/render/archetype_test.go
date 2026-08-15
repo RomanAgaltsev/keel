@@ -96,3 +96,19 @@ func TestTaskfileGoLibraryKeepsEveryOtherTask(t *testing.T) {
 	// The tool pins live here regardless of archetype.
 	require.Contains(t, got, "GOLANGCI_LINT_VERSION: \"v2.12.2\"")
 }
+
+func TestReadmeLibraryHasNoBuildLine(t *testing.T) {
+	readme := libraryPlan(t, "base-layout").Files["README.md"]
+	require.NotContains(t, readme, "task build")
+	require.NotContains(t, readme, "./bin/demo")
+	// The rest of Getting started survives.
+	require.Contains(t, readme, "task ci")
+	require.Contains(t, readme, "task         # list available tasks")
+}
+
+func TestContributingLibraryHasNoBuildLine(t *testing.T) {
+	c := libraryPlan(t, "contributing-go").Files["CONTRIBUTING.md"]
+	require.NotContains(t, c, "task build")
+	require.Contains(t, c, "task ci")
+	require.Contains(t, c, "task setup")
+}
