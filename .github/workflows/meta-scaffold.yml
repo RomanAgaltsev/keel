@@ -86,5 +86,11 @@ jobs:
           set -e
           test ! -e cmd
           test ! -e .goreleaser.yaml
-          ! grep -q '^  build:' Taskfile.yml
-          ! grep -q goreleaser .github/workflows/release.yml
+          # `! grep ...` under set -e is a no-op assertion (shellcheck SC2251):
+          # the negation suppresses errexit, so it passes either way. Use an if.
+          if grep -q '^  build:' Taskfile.yml; then
+            echo "Taskfile still has a build task"; exit 1
+          fi
+          if grep -q goreleaser .github/workflows/release.yml; then
+            echo "release.yml still has a goreleaser job"; exit 1
+          fi
