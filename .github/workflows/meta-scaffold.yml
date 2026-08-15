@@ -24,3 +24,40 @@ jobs:
           task ci
           task build
           ./bin/metademo
+
+  cross-release-update:
+    name: update a repo scaffolded by the previous release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v7
+        with: { go-version-file: go.mod }
+      - uses: arduino/setup-task@v3
+        with: { version: 3.x, repo-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Scaffold with the previous release
+        run: |
+          PREV=$(git tag --sort=-v:refname | grep '^v' | head -1)
+          echo "previous release: $PREV"
+          # Build from the tag rather than `go install ...@$PREV`. keel's module
+          # path has no /v2 suffix, so the module proxy rejects every v2 tag
+          # outright ("module path must match major version") and `@latest`
+          # silently resolves to v1.7.1. A worktree build bypasses the proxy and
+          # keeps this job honest about which binary it is testing.
+          git worktree add /tmp/prev "$PREV"
+          (cd /tmp/prev && go build -o /tmp/prevkeel ./cmd/keel)
+          /tmp/prevkeel new --no-input --answers testdata/meta/answers.yaml --target /tmp/xrel
+      - name: Update it with HEAD
+        run: |
+          task build
+          ./bin/keel update --path /tmp/xrel
+      - name: The update must have delivered the current recipe
+        working-directory: /tmp/xrel
+        run: |
+          set -e
+          for f in LICENSE CONTRIBUTING.md SECURITY.md Taskfile.yml; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+          done
+          go mod tidy
+          task setup
+          task ci

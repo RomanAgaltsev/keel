@@ -16,7 +16,6 @@ import (
 	"github.com/RomanAgaltsev/keel/internal/git"
 	"github.com/RomanAgaltsev/keel/internal/lock"
 	"github.com/RomanAgaltsev/keel/internal/module"
-	"github.com/RomanAgaltsev/keel/internal/modver"
 	"github.com/RomanAgaltsev/keel/internal/render"
 	"github.com/RomanAgaltsev/keel/internal/update"
 )
@@ -29,6 +28,7 @@ type updateFlags struct {
 	commit      bool
 	overwrite   bool
 	modules     string
+	recipe      string
 }
 
 func newUpdateCmd() *cobra.Command {
@@ -47,6 +47,7 @@ func newUpdateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&f.commit, "commit", false, "commit the update when there are no conflicts")
 	cmd.Flags().BoolVar(&f.overwrite, "overwrite", false, "overwrite user-edited files instead of writing .keel-new")
 	cmd.Flags().StringVar(&f.modules, "modules", "", "restrict to a comma-separated subset of modules")
+	cmd.Flags().StringVar(&f.recipe, "recipe", "", "recipe to re-apply (overrides the one recorded in .scaffold.lock)")
 	return cmd
 }
 
@@ -58,9 +59,12 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 		return err
 	}
 
-	rec, recipeDir, err := loadRecipe(lk.Recipe)
+	rec, recipeDir, _, warning, err := resolveUpdateRecipe(lk, f.path, f.recipe)
 	if err != nil {
 		return err
+	}
+	if warning != "" {
+		fmt.Fprintln(out, warning)
 	}
 	externals, err := resolveExternals(cmd.Context(), rec, recipeDir)
 	if err != nil {
@@ -80,7 +84,10 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 	if f.modules != "" {
 		warnUnknownModules(out, lk, splitCSV(f.modules))
 	}
-	candidates, versionChanged, refreshed, err := selectCandidates(f, lk, comp)
+	ms, err := update.Resolve(lk, names, compProvenance(comp), update.Options{
+		Reconfigure: f.reconfigure,
+		Only:        splitCSV(f.modules),
+	})
 	if err != nil {
 		return err
 	}
@@ -91,8 +98,9 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 	}
 
 	up, err := update.Classify(update.Input{
-		Candidates:     candidates,
-		VersionChanged: versionChanged,
+		Candidates:     ms.Candidates(),
+		Orphaned:       ms.OrphanedSet(),
+		VersionChanged: ms.VersionChanged,
 		Render:         plan.Files,
 		Owner:          plan.Owner(),
 		Original:       lockOriginals(lk),
@@ -103,16 +111,17 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 	}
 
 	if f.dryRun {
+		printAddedModules(out, ms, plan.Owner())
 		printUpdatePlan(out, up, true, f.overwrite)
 		return nil
 	}
 	// Nothing is behind: leave the lock (and tree) untouched rather than rewriting
 	// it just to bump keel_version.
-	if len(candidates) == 0 {
+	if len(ms.Candidates()) == 0 && len(ms.OrphanedModules()) == 0 {
 		fmt.Fprintln(out, "everything is up to date")
 		return nil
 	}
-	return applyUpdate(cmd, f, lockPath, lk, ans, plan, up, refreshed)
+	return applyUpdate(cmd, f, lockPath, lk, ans, plan, up, ms)
 }
 
 // updateAnswers resolves the answer set used to render. By default the stored
@@ -146,36 +155,27 @@ func warnUnknownModules(out io.Writer, lk lock.Lock, requested []string) {
 	}
 }
 
-// selectCandidates determines which modules to update (version-bumped only, or
-// all under --reconfigure, intersected with --modules) and the version each
-// candidate should be refreshed to.
-func selectCandidates(f *updateFlags, lk lock.Lock, comp *module.Composite) (candidates, versionChanged map[string]bool, refreshed map[string]string, err error) {
-	candidates, versionChanged, err = updateCandidates(lk, comp)
-	if err != nil {
-		return nil, nil, nil, err
+// compProvenance adapts the composite module loader to update.Provenance,
+// keeping the resolver free of the loader itself.
+func compProvenance(comp *module.Composite) update.Provenance {
+	return func(name string) (string, string, error) {
+		if _, err := comp.Load(name); err != nil {
+			return "", "", err
+		}
+		source, version := comp.Provenance(name)
+		return source, version, nil
 	}
-	if f.reconfigure {
-		candidates = allModules(lk) // reconfigure touches every recorded module
-	}
-	if f.modules != "" {
-		candidates = intersect(candidates, splitCSV(f.modules))
-	}
-	refreshed, err = refreshedVersions(candidates, comp)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return candidates, versionChanged, refreshed, nil
 }
 
 // applyUpdate writes the classified plan, rewrites the lock to the refreshed
 // versions, and commits when --commit is set and there are no conflicts.
-func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lock, ans answers.Answers, plan render.Plan, up update.Plan, refreshed map[string]string) error {
+func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lock, ans answers.Answers, plan render.Plan, up update.Plan, ms update.ModuleSet) error {
 	out := cmd.OutOrStdout()
 	applied, err := update.Apply(up, f.path, f.overwrite)
 	if err != nil {
 		return err
 	}
-	newLock := update.NewLock(lk, plan.Files, plan.Owner(), refreshed, version)
+	newLock := update.NewLock(lk, ms, plan.Files, plan.Owner(), version)
 	// Persist the answers actually rendered with — re-collected choices under
 	// --reconfigure, or stored answers with newly-added defaults filled — so the
 	// lock stays consistent with the hashes just recorded.
@@ -183,6 +183,7 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 	if err := lock.Write(lockPath, newLock); err != nil {
 		return err
 	}
+	printAddedModules(out, ms, plan.Owner())
 	printApplied(out, applied)
 	reportRemoved(out, applied)
 
@@ -192,6 +193,7 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 		// working-tree changes.
 		staged := append([]string{}, applied.Updated...)
 		staged = append(staged, applied.New...)
+		staged = append(staged, applied.Deleted...)
 		staged = append(staged, ".scaffold.lock")
 		if err := commitUpdate(cmd.Context(), f.path, lk.Answers, staged); err != nil {
 			return err
@@ -201,34 +203,6 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 		fmt.Fprintln(out, "resolve the .keel-new files, then commit")
 	}
 	return nil
-}
-
-// updateCandidates returns the set of modules whose current version is ahead of
-// the locked version, plus a version-changed flag per locked module.
-func updateCandidates(lk lock.Lock, comp *module.Composite) (cand, changed map[string]bool, err error) {
-	cand, changed = map[string]bool{}, map[string]bool{}
-	for _, m := range lk.Modules {
-		if _, lerr := comp.Load(m.Name); lerr != nil {
-			return nil, nil, fmt.Errorf("module %q: %w", m.Name, lerr)
-		}
-		curVer := resolvedVersion(comp, m.Name)
-		cmp, cerr := modver.Compare(m.Version, curVer)
-		if cerr != nil {
-			// Unparseable versions ⇒ treat as unchanged (don't guess a bump).
-			continue
-		}
-		if cmp < 0 {
-			cand[m.Name] = true
-		}
-		changed[m.Name] = cmp != 0
-	}
-	return cand, changed, nil
-}
-
-// resolvedVersion returns the version the loader reports for a module.
-func resolvedVersion(comp *module.Composite, name string) string {
-	_, ver := comp.Provenance(name)
-	return ver
 }
 
 // lockOriginals indexes the lock's recorded hashes as module → path → sha.
@@ -295,46 +269,11 @@ func diskHasher(repoPath string) func(string) (string, bool, error) {
 	}
 }
 
-// allModules returns every recorded module as a candidate set.
-func allModules(lk lock.Lock) map[string]bool {
-	out := map[string]bool{}
-	for _, m := range lk.Modules {
-		out[m.Name] = true
-	}
-	return out
-}
-
-// refreshedVersions maps each candidate module to its current resolved version.
-func refreshedVersions(candidates map[string]bool, comp *module.Composite) (map[string]string, error) {
-	out := map[string]string{}
-	for name := range candidates {
-		if _, err := comp.Load(name); err != nil {
-			return nil, fmt.Errorf("module %q: %w", name, err)
-		}
-		out[name] = resolvedVersion(comp, name)
-	}
-	return out, nil
-}
-
 func splitCSV(s string) []string {
 	var out []string
 	for _, p := range strings.Split(s, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
-		}
-	}
-	return out
-}
-
-func intersect(set map[string]bool, keep []string) map[string]bool {
-	want := map[string]bool{}
-	for _, k := range keep {
-		want[k] = true
-	}
-	out := map[string]bool{}
-	for k := range set {
-		if want[k] {
-			out[k] = true
 		}
 	}
 	return out
@@ -368,23 +307,54 @@ func commitUpdate(ctx context.Context, path string, answers map[string]any, path
 	return repo.Commit(ctx, "chore: keel update")
 }
 
-// reportRemoved prints the files that keel no longer produces. Apply deliberately
-// leaves them on disk - deleting user files on an update is not keel's call - so
-// the report has to be actionable, or a consolidated workflow silently runs
-// alongside the four files it replaced.
-func reportRemoved(w io.Writer, a update.Applied) {
-	if len(a.Removed) == 0 {
+// printAddedModules announces modules the recipe gained since this repo was
+// scaffolded. Without it the addition is invisible: the files simply appear in
+// the `new` list, indistinguishable from a new file in a module the repo
+// already had.
+func printAddedModules(w io.Writer, ms update.ModuleSet, owner map[string]string) {
+	added := ms.AddedModules()
+	if len(added) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "\n%d file(s) are no longer produced by keel and were left in place:\n\n", len(a.Removed))
-	// Apply sorts these (apply.go:56); sort a copy anyway so the output is
-	// deterministic for any caller, matching printApplied.
-	removed := append([]string{}, a.Removed...)
-	sort.Strings(removed)
-	for _, p := range removed {
+	counts := map[string]int{}
+	for _, mod := range owner {
+		counts[mod]++
+	}
+	for _, name := range added {
+		fmt.Fprintf(w, "added module  %-20s (%s)\n", name, plural(counts[name], "file"))
+	}
+}
+
+// plural renders "1 file" / "3 files".
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// reportRemoved prints the files keel no longer produces but did not delete,
+// because the user edited them. Deleted files are already listed by
+// printApplied; these are the only ones that still need a decision.
+func reportRemoved(w io.Writer, a update.Applied) {
+	if len(a.Kept) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "\n%s you edited %s no longer produced by keel:\n\n",
+		plural(len(a.Kept), "file"), isAre(len(a.Kept)))
+	kept := append([]string{}, a.Kept...)
+	sort.Strings(kept)
+	for _, p := range kept {
 		fmt.Fprintf(w, "    rm %s\n", p)
 	}
 	fmt.Fprint(w, "\nReview them, then delete the ones you no longer want.\n")
+}
+
+func isAre(n int) string {
+	if n == 1 {
+		return "is"
+	}
+	return "are"
 }
 
 // printApplied prints the per-class summary, deterministically.
@@ -401,7 +371,19 @@ func printApplied(out io.Writer, a update.Applied) {
 	line("updated", a.Updated)
 	line("new", a.New)
 	line("conflict", a.Conflicts)
-	line("removed", a.Removed)
-	fmt.Fprintf(out, "updated %d, new %d, conflicts %d, removed %d\n",
-		len(a.Updated), len(a.New), len(a.Conflicts), len(a.Removed))
+	for _, p := range sorted(a.Deleted) {
+		fmt.Fprintf(out, "%-9s %s (deleted)\n", "removed", p)
+	}
+	for _, p := range sorted(a.Kept) {
+		fmt.Fprintf(out, "%-9s %s (edited — left in place)\n", "removed", p)
+	}
+	fmt.Fprintf(out, "updated %d, new %d, conflicts %d, deleted %d, left %d\n",
+		len(a.Updated), len(a.New), len(a.Conflicts), len(a.Deleted), len(a.Kept))
+}
+
+// sorted returns a sorted copy, so printing never mutates the caller's slice.
+func sorted(in []string) []string {
+	out := append([]string{}, in...)
+	sort.Strings(out)
+	return out
 }

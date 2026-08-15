@@ -104,3 +104,81 @@ func TestClassifyV1ConservativeButPreciseWhenVersionUnchanged(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, p.Changes) // reconstructed baseline == on disk == new ⇒ no-op
 }
+
+func TestClassifyDeletesUntouchedRemovals(t *testing.T) {
+	const old = "name: codeql\n"
+	got, err := update.Classify(update.Input{
+		Candidates:     map[string]bool{"security-go": true},
+		VersionChanged: map[string]bool{"security-go": true},
+		Render:         map[string]string{".github/workflows/security.yml": "name: security\n"},
+		Owner:          map[string]string{".github/workflows/security.yml": "security-go"},
+		Original: map[string]map[string]string{"security-go": {
+			".github/workflows/codeql.yml": lock.HashBytes([]byte(old)),
+		}},
+		HashOf: func(path string) (string, bool, error) {
+			if path == ".github/workflows/codeql.yml" {
+				return lock.HashBytes([]byte(old)), true, nil
+			}
+			return "", false, nil
+		},
+	})
+	require.NoError(t, err)
+	require.Contains(t, got.Changes, update.FileChange{
+		Path: ".github/workflows/codeql.yml", Class: update.Removed,
+	})
+}
+
+func TestClassifyKeepsEditedRemovals(t *testing.T) {
+	got, err := update.Classify(update.Input{
+		Candidates:     map[string]bool{"security-go": true},
+		VersionChanged: map[string]bool{"security-go": true},
+		Render:         map[string]string{},
+		Owner:          map[string]string{},
+		Original: map[string]map[string]string{"security-go": {
+			".github/workflows/codeql.yml": lock.HashBytes([]byte("name: codeql\n")),
+		}},
+		HashOf: func(string) (string, bool, error) {
+			return lock.HashBytes([]byte("name: codeql\n# my edit\n")), true, nil
+		},
+	})
+	require.NoError(t, err)
+	require.Contains(t, got.Changes, update.FileChange{
+		Path: ".github/workflows/codeql.yml", Class: update.RemovedEdited,
+	})
+}
+
+func TestClassifySkipsAlreadyAbsentRemovals(t *testing.T) {
+	got, err := update.Classify(update.Input{
+		Candidates:     map[string]bool{"security-go": true},
+		VersionChanged: map[string]bool{"security-go": true},
+		Render:         map[string]string{},
+		Owner:          map[string]string{},
+		Original: map[string]map[string]string{"security-go": {
+			".github/workflows/codeql.yml": "abc",
+		}},
+		HashOf: func(string) (string, bool, error) { return "", false, nil },
+	})
+	require.NoError(t, err)
+	require.Empty(t, got.Changes, "a file the user already deleted is not news")
+}
+
+func TestClassifyRetractsOrphanedModuleFiles(t *testing.T) {
+	const body = "name: typos\n"
+	got, err := update.Classify(update.Input{
+		Candidates:     map[string]bool{},
+		Orphaned:       map[string]bool{"spell": true},
+		VersionChanged: map[string]bool{},
+		Render:         map[string]string{},
+		Owner:          map[string]string{},
+		Original: map[string]map[string]string{"spell": {
+			".github/workflows/typos.yml": lock.HashBytes([]byte(body)),
+		}},
+		HashOf: func(string) (string, bool, error) {
+			return lock.HashBytes([]byte(body)), true, nil
+		},
+	})
+	require.NoError(t, err)
+	require.Contains(t, got.Changes, update.FileChange{
+		Path: ".github/workflows/typos.yml", Class: update.Removed,
+	})
+}

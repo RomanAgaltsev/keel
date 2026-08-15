@@ -38,6 +38,55 @@ Pass **`--overwrite`** to replace user-edited files in place instead of writing
   modules.
 - **`--path <dir>`** — the repository to update (defaults to the current
   directory).
+- **`--recipe <path>`** — re-apply this recipe instead of the one recorded in
+  `.scaffold.lock`.
+
+## Modules the recipe gained
+
+`keel update` re-resolves the recipe, so a module added to it since your repo was
+scaffolded is applied like any other change, reported under its own heading:
+
+```text
+added module  license              (1 file)
+added module  governance           (3 files)
+```
+
+A file the new module renders is written when it does not exist. If you already
+wrote your own — a hand-rolled `CONTRIBUTING.md`, say — it is treated as any other
+edited file: yours is left alone and keel's render is written beside it as
+`.keel-new`.
+
+`--modules <csv>` scopes this like everything else, and `--dry-run` previews it.
+
+## Files the recipe no longer produces
+
+When a module stops rendering a file — as `security-go` did when four workflows
+became one `security.yml` — keel retracts it **only if it still matches the bytes
+keel wrote**:
+
+```text
+removed   .github/workflows/codeql.yml       (deleted)
+removed   .github/workflows/govulncheck.yml  (edited — left in place)
+```
+
+If you edited it, keel never deletes it; it prints an `rm` you can run yourself.
+This is the same rule that governs updates: an untouched file is keel's to
+change, an edited one is yours.
+
+## Pointing at a moved recipe
+
+A repo scaffolded from a recipe file records where that file was. If it has since
+moved, `keel update` says so, updates the modules it already knows about, and
+tells you how to do better:
+
+```text
+warning: recipe "recipes/my-recipe.yaml" not found; updating only the modules
+         recorded in .scaffold.lock.
+         Modules added to the recipe since this repo was scaffolded cannot be
+         detected. Re-run with --recipe <path> to point at it.
+```
+
+`keel update --recipe ./path/to/recipe.yaml` overrides the recorded location.
 
 ## Older scaffolds
 

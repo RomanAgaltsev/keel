@@ -30,11 +30,16 @@ type Module struct {
 
 // Lock is the .scaffold.lock document.
 type Lock struct {
-	LockVersion int            `yaml:"lock_version"`
-	KeelVersion string         `yaml:"keel_version"`
-	Recipe      string         `yaml:"recipe"`
-	Modules     []Module       `yaml:"modules"`
-	Answers     map[string]any `yaml:"answers"`
+	LockVersion int    `yaml:"lock_version"`
+	KeelVersion string `yaml:"keel_version"`
+	Recipe      string `yaml:"recipe"`
+	// RecipeSource is the path a file-based recipe was loaded from, as typed at
+	// scaffold time. Empty for a builtin recipe. Additive and optional on
+	// purpose: every existing v2 lock stays readable, and an older keel ignores
+	// the key rather than failing to unmarshal a retyped `recipe`.
+	RecipeSource string         `yaml:"recipe_source,omitempty"`
+	Modules      []Module       `yaml:"modules"`
+	Answers      map[string]any `yaml:"answers"`
 }
 
 // HashBytes returns the hex sha256 of b, used for the lock's per-file hashes.

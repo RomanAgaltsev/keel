@@ -132,11 +132,17 @@ overlays the result, using the per-file hashes recorded in `.scaffold.lock`:
 - An untouched file is updated in place.
 - A file you edited is left alone; the new render is written alongside as
   `<path>.keel-new` for you to merge. `--overwrite` replaces it instead.
+- A module the recipe has gained since you scaffolded is added, reported as
+  `added module <name>`.
+- A file the recipe no longer produces is deleted when it still matches what keel
+  wrote, and reported with an `rm` suggestion when you have edited it.
 - `--dry-run` previews the classification; `--reconfigure` re-asks the questions;
-  `--commit` makes a single `chore: keel update` commit of keel's own changes.
+  `--commit` makes a single `chore: keel update` commit of keel's own changes;
+  `--recipe <path>` re-applies this recipe instead of the one recorded in
+  `.scaffold.lock`.
 
 `keel outdated` reports, without changing anything, which modules have a newer
-version available.
+version available and which the recipe has gained or dropped.
 
 ## How it works
 

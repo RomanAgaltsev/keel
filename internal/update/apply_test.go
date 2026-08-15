@@ -27,7 +27,9 @@ func TestApplyWritesByClass(t *testing.T) {
 	require.Equal(t, []string{"clean.yml"}, got.Updated)
 	require.Equal(t, []string{"sub/new.yml"}, got.New)
 	require.Equal(t, []string{"edited.yml"}, got.Conflicts)
-	require.Equal(t, []string{"gone.yml"}, got.Removed)
+	// Removed is now a deletion, not a report: the file was never on disk here,
+	// and removeFile treats an already-absent path as success.
+	require.Equal(t, []string{"gone.yml"}, got.Deleted)
 
 	// Clean + New written verbatim.
 	requireFile(t, filepath.Join(target, "clean.yml"), "fresh")
@@ -58,4 +60,48 @@ func requireFile(t *testing.T, path, want string) {
 	b, err := os.ReadFile(path)
 	require.NoError(t, err)
 	require.Equal(t, want, string(b))
+}
+
+func TestApplyDeletesRemoved(t *testing.T) {
+	target := t.TempDir()
+	path := filepath.Join(target, ".github", "workflows", "codeql.yml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("name: codeql\n"), 0o600))
+
+	got, err := update.Apply(update.Plan{Changes: []update.FileChange{
+		{Path: ".github/workflows/codeql.yml", Class: update.Removed},
+	}}, target, false)
+	require.NoError(t, err)
+	require.Equal(t, []string{".github/workflows/codeql.yml"}, got.Deleted)
+	require.NoFileExists(t, path)
+}
+
+func TestApplyKeepsEditedRemovals(t *testing.T) {
+	target := t.TempDir()
+	path := filepath.Join(target, "keep.yml")
+	require.NoError(t, os.WriteFile(path, []byte("mine\n"), 0o600))
+
+	got, err := update.Apply(update.Plan{Changes: []update.FileChange{
+		{Path: "keep.yml", Class: update.RemovedEdited},
+	}}, target, false)
+	require.NoError(t, err)
+	require.Equal(t, []string{"keep.yml"}, got.Kept)
+	require.FileExists(t, path, "an edited file is never deleted")
+}
+
+func TestApplyDeleteIsIdempotent(t *testing.T) {
+	// Classify skips absent files, but Apply must not explode if the file goes
+	// away between classification and application.
+	got, err := update.Apply(update.Plan{Changes: []update.FileChange{
+		{Path: "gone.yml", Class: update.Removed},
+	}}, t.TempDir(), false)
+	require.NoError(t, err)
+	require.Equal(t, []string{"gone.yml"}, got.Deleted)
+}
+
+func TestApplyRefusesToDeleteOutsideTarget(t *testing.T) {
+	_, err := update.Apply(update.Plan{Changes: []update.FileChange{
+		{Path: "../escape.yml", Class: update.Removed},
+	}}, t.TempDir(), false)
+	require.Error(t, err)
 }

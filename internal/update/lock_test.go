@@ -20,9 +20,14 @@ func TestNewLockRefreshesOnlyNamedModules(t *testing.T) {
 	}
 	renderContent := map[string]string{".golangci.yml": "NEW", "README.md": "ALSO-NEW"}
 	owner := map[string]string{".golangci.yml": "lint", "README.md": "base"}
-	refreshed := map[string]string{"lint": "1.1.0"} // only lint bumped
+	ms := update.ModuleSet{
+		State:       map[string]update.State{"lint": update.Behind, "base": update.Unchanged},
+		Refreshed:   map[string]string{"lint": "1.1.0"}, // only lint bumped
+		Source:      map[string]string{"lint": "builtin", "base": "builtin"},
+		RecipeOrder: []string{"lint", "base"},
+	}
 
-	got := update.NewLock(old, renderContent, owner, refreshed, "1.6.0")
+	got := update.NewLock(old, ms, renderContent, owner, "1.6.0")
 
 	require.Equal(t, "1.6.0", got.KeelVersion)
 	require.Equal(t, "go-service", got.Recipe)
@@ -38,4 +43,51 @@ func TestNewLockRefreshesOnlyNamedModules(t *testing.T) {
 	// base untouched: old entry preserved verbatim.
 	require.Equal(t, "1.0.0", byName["base"].Version)
 	require.Equal(t, "keep", byName["base"].Files[0].SHA256)
+}
+
+func TestNewLockAppendsAddedModules(t *testing.T) {
+	old := lock.Lock{Modules: []lock.Module{
+		{Name: "base-layout", Source: "builtin", Version: "1.0.0"},
+	}}
+	ms := update.ModuleSet{
+		State:       map[string]update.State{"base-layout": update.Unchanged, "license": update.Added},
+		Refreshed:   map[string]string{"license": "1.0.0"},
+		Source:      map[string]string{"license": "builtin"},
+		RecipeOrder: []string{"base-layout", "license"},
+	}
+	got := update.NewLock(old, ms,
+		map[string]string{"LICENSE": "MIT License\n"},
+		map[string]string{"LICENSE": "license"},
+		"2.1.0")
+
+	require.Len(t, got.Modules, 2)
+	require.Equal(t, "license", got.Modules[1].Name)
+	require.Equal(t, "1.0.0", got.Modules[1].Version)
+	require.Equal(t, "builtin", got.Modules[1].Source)
+	require.Equal(t, []lock.File{{
+		Path:   "LICENSE",
+		SHA256: lock.HashBytes([]byte("MIT License\n")),
+	}}, got.Modules[1].Files)
+}
+
+func TestNewLockDropsOrphanedModules(t *testing.T) {
+	old := lock.Lock{Modules: []lock.Module{
+		{Name: "base-layout", Source: "builtin", Version: "1.0.0"},
+		{Name: "spell", Source: "builtin", Version: "1.0.0"},
+	}}
+	ms := update.ModuleSet{
+		State:       map[string]update.State{"base-layout": update.Unchanged, "spell": update.Orphaned},
+		RecipeOrder: []string{"base-layout"},
+	}
+	got := update.NewLock(old, ms, map[string]string{}, map[string]string{}, "2.1.0")
+
+	require.Len(t, got.Modules, 1)
+	require.Equal(t, "base-layout", got.Modules[0].Name)
+}
+
+func TestNewLockPreservesRecipeSource(t *testing.T) {
+	old := lock.Lock{Recipe: "my-recipe", RecipeSource: "./my-recipe.yaml"}
+	got := update.NewLock(old, update.ModuleSet{State: map[string]update.State{}},
+		map[string]string{}, map[string]string{}, "2.1.0")
+	require.Equal(t, "./my-recipe.yaml", got.RecipeSource)
 }

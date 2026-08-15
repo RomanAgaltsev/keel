@@ -11,9 +11,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/RomanAgaltsev/keel"
 	"github.com/RomanAgaltsev/keel/internal/answers"
 	"github.com/RomanAgaltsev/keel/internal/lock"
 	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/internal/recipe"
 	"github.com/RomanAgaltsev/keel/internal/update"
 )
 
@@ -171,11 +173,22 @@ func TestUpdateRequiresReconfigureForMissingRequiredAnswer(t *testing.T) {
 
 // TestUpdateNoCandidatesLeavesLockUntouched covers M1(a): when nothing is behind,
 // the lock is not rewritten just to bump keel_version.
+//
+// Since 2.1.0 the recipe is authoritative for composition, so "no candidates"
+// requires the lock to record *every* module the recipe names — a module it omits
+// is an addition, and updating is then exactly the right thing to do. Each is
+// pinned ahead of the embedded version so none is behind either.
 func TestUpdateNoCandidatesLeavesLockUntouched(t *testing.T) {
 	target := t.TempDir()
+	rec, err := recipe.Load(keel.BuiltinFS, "go-service")
+	require.NoError(t, err)
+	mods := make([]lock.Module, 0, len(rec.Modules))
+	for _, name := range rec.ModuleNames() {
+		mods = append(mods, lock.Module{Name: name, Source: "builtin", Version: "999.0.0"})
+	}
 	lk := lock.Lock{
 		KeelVersion: "0.0.0", Recipe: "go-service",
-		Modules: []lock.Module{{Name: "lint-go", Source: "builtin", Version: "999.0.0"}}, // ahead ⇒ not a candidate
+		Modules: mods, // every recipe module, all ahead ⇒ no candidates, no additions
 		Answers: fullAnswers(),
 	}
 	require.NoError(t, lock.Write(filepath.Join(target, ".scaffold.lock"), lk))
@@ -305,8 +318,10 @@ func gitLog(t *testing.T, dir string) string {
 
 func TestUpdateReportsRemovedWithDeleteCommands(t *testing.T) {
 	var buf bytes.Buffer
+	// Kept, not Deleted: since 2.1.0 keel deletes the untouched retractions
+	// itself, so the actionable `rm` list is exactly the files the user edited.
 	applied := update.Applied{
-		Removed: []string{".github/workflows/codeql.yml", ".github/workflows/actionlint.yml"},
+		Kept: []string{".github/workflows/codeql.yml", ".github/workflows/actionlint.yml"},
 	}
 
 	reportRemoved(&buf, applied)
@@ -326,4 +341,44 @@ func TestUpdateSaysNothingWhenNothingRemoved(t *testing.T) {
 	var buf bytes.Buffer
 	reportRemoved(&buf, update.Applied{})
 	require.Empty(t, buf.String())
+}
+
+func TestPrintAddedModulesCountsFiles(t *testing.T) {
+	var buf bytes.Buffer
+	ms := update.ModuleSet{
+		State:       map[string]update.State{"license": update.Added, "governance": update.Added},
+		RecipeOrder: []string{"license", "governance"},
+	}
+	owner := map[string]string{
+		"LICENSE":                 "license",
+		"SECURITY.md":             "governance",
+		".editorconfig":           "governance",
+		".github/CODEOWNERS":      "governance",
+		".github/workflows/x.yml": "lint-go",
+	}
+	printAddedModules(&buf, ms, owner)
+
+	out := buf.String()
+	require.Contains(t, out, "added module  license              (1 file)")
+	require.Contains(t, out, "added module  governance           (3 files)")
+	require.NotContains(t, out, "lint-go")
+	require.Less(t, strings.Index(out, "license"), strings.Index(out, "governance"),
+		"added modules are listed in recipe order")
+}
+
+func TestPrintAddedModulesSilentWhenNoneAdded(t *testing.T) {
+	var buf bytes.Buffer
+	printAddedModules(&buf, update.ModuleSet{State: map[string]update.State{}}, map[string]string{})
+	require.Empty(t, buf.String())
+}
+
+func TestReportRemovedReportsKeptOnly(t *testing.T) {
+	var buf bytes.Buffer
+	reportRemoved(&buf, update.Applied{
+		Deleted: []string{".github/workflows/codeql.yml"},
+		Kept:    []string{".github/workflows/govulncheck.yml"},
+	})
+	out := buf.String()
+	require.Contains(t, out, "rm .github/workflows/govulncheck.yml")
+	require.NotContains(t, out, "codeql.yml", "deleted files need no instructions")
 }
