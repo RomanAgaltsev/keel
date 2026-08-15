@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/RomanAgaltsev/keel/compare/v2.3.0...v2.4.0) (2026-08-15)
+
+
+### Features
+
+* archetype axis and the go-library recipe ([#48](https://github.com/RomanAgaltsev/keel/issues/48)) ([ec3ebac](https://github.com/RomanAgaltsev/keel/commit/ec3ebacbfa835b19a5d14f74f6c902db01251233))
+
 ## [2.3.0](https://github.com/RomanAgaltsev/keel/compare/v2.2.0...v2.3.0) (2026-08-15)
 
 
