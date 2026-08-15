@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/RomanAgaltsev/keel/compare/v2.1.1...v2.2.0) (2026-08-15)
+
+
+### Features
+
+* **version:** report build provenance, and verify every release is installable ([#44](https://github.com/RomanAgaltsev/keel/issues/44)) ([08e59fe](https://github.com/RomanAgaltsev/keel/commit/08e59fe11d4888782a874eb0902b234ab2d3405d))
+
 ## [2.1.1](https://github.com/RomanAgaltsev/keel/compare/v2.1.0...v2.1.1) (2026-08-15)
 
 
