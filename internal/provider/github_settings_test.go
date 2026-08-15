@@ -603,3 +603,111 @@ func TestReadToggle404MeansDisabledNotUnreachable(t *testing.T) {
 	require.NoError(t, err, "a 404 is read as disabled, not as an error")
 	require.Len(t, changes, 1, "which means an unreachable repo shows as drift here")
 }
+
+// TestActionsGroupSendsEnabledWithAllowedActions pins a bug the 2026-08-15
+// acceptance run caught against a real repository: PUT …/actions/permissions
+// rejects a body carrying only allowed_actions with
+// 422 {"message":"Invalid request.\n\n\"enabled\" wasn't supplied."}.
+// The field is required, and its current value must be preserved rather than
+// assumed — disabling Actions is not this group's business.
+func TestActionsGroupSendsEnabledWithAllowedActions(t *testing.T) {
+	var perm map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"enabled":true,"allowed_actions":"all"}`))
+			return
+		}
+		if r.URL.Path == "/repos/me/demo/actions/permissions" {
+			b, _ := io.ReadAll(r.Body)
+			require.NoError(t, json.Unmarshal(b, &perm))
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "actions")
+
+	d := settings.Desired{Actions: &settings.Actions{Allowed: ptr(settings.AllowedLocalOnly)}}
+	changes, err := g.Plan(context.Background(), d)
+	require.NoError(t, err)
+	require.NoError(t, g.Apply(context.Background(), changes))
+
+	require.Contains(t, perm, "enabled", `GitHub rejects the PUT without "enabled"`)
+	require.Equal(t, true, perm["enabled"], "the current value is preserved, not assumed")
+	require.Equal(t, "local_only", perm["allowed_actions"])
+}
+
+// TestActionsGroupPreservesDisabledActions is the other half: a repo with Actions
+// switched off must not be switched on as a side effect of setting a policy.
+func TestActionsGroupPreservesDisabledActions(t *testing.T) {
+	var perm map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"enabled":false,"allowed_actions":"all"}`))
+			return
+		}
+		b, _ := io.ReadAll(r.Body)
+		require.NoError(t, json.Unmarshal(b, &perm))
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "actions")
+	changes, err := g.Plan(context.Background(), settings.Desired{
+		Actions: &settings.Actions{Allowed: ptr(settings.AllowedLocalOnly)},
+	})
+	require.NoError(t, err)
+	require.NoError(t, g.Apply(context.Background(), changes))
+	require.Equal(t, false, perm["enabled"])
+}
+
+// TestSecurityGroupAbsentAnalysisMemberIsUnsupported pins the second bug the
+// 2026-08-15 acceptance run caught. On a public repo GitHub omits
+// dependency_graph from security_and_analysis entirely — it is always on and
+// cannot be turned off — so keel read it as false, PATCHed it, got a 2xx, and
+// read false again. `keel settings apply --check` would have reported drift
+// forever on every scaffolded public repo, and task keel:settings would always
+// exit 1. A key the provider will not report is not drift; it is unsupported.
+func TestSecurityGroupAbsentAnalysisMemberIsUnsupported(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"security_and_analysis":{"secret_scanning":{"status":"enabled"}}}`))
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "security")
+
+	d := settings.Desired{Security: &settings.Security{DependencyGraph: ptr(true)}}
+	changes, err := g.Plan(context.Background(), d)
+	require.NoError(t, err)
+	require.Empty(t, changes, "an unreportable key must not be staged as a change")
+
+	u, ok := g.(settings.Unsupporter)
+	require.True(t, ok, "the security group must implement Unsupporter")
+	un := u.Unsupported(d)
+	require.Len(t, un, 1)
+	require.Equal(t, "security.dependency_graph", un[0].Key)
+	require.Equal(t, "github", un[0].Provider)
+}
+
+// TestSecurityGroupAbsentMemberDeclaredFalseIsQuiet keeps the fix narrow: an
+// absent member already reads as "off", so declaring it off is simply in sync —
+// not something worth reporting. This is the private-repo case, where the
+// rendered template declares secret_scanning: false.
+func TestSecurityGroupAbsentMemberDeclaredFalseIsQuiet(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "security")
+
+	d := settings.Desired{Security: &settings.Security{SecretScanning: ptr(false)}}
+	changes, err := g.Plan(context.Background(), d)
+	require.NoError(t, err)
+	require.Empty(t, changes)
+	require.Empty(t, g.(settings.Unsupporter).Unsupported(d))
+}

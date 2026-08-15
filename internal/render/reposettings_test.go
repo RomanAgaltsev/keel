@@ -131,3 +131,39 @@ func TestRepoSettingsRustChecksMatchEmittedJobNames(t *testing.T) {
 		"lint", "test", "typos", "pr-title", "review", "actionlint", "coverage", "audit", "deny",
 	}, d.Rulesets[0].RequiredStatusChecks)
 }
+
+// TestRepoSettingsRendersWithoutSecurityModuleAnswers pins a failure the
+// 2026-08-15 acceptance run caught: enable_codeql and enable_govulncheck are
+// declared by security-go, not by this module, so a custom recipe that takes
+// repo-settings-go without security-go used to fail the whole scaffold under
+// missingkey=error. The guards use `index` rather than field access, which
+// returns falsy for an absent key instead of erroring — so the checks those
+// answers gate are simply omitted, which is also the right answer.
+func TestRepoSettingsRendersWithoutSecurityModuleAnswers(t *testing.T) {
+	a := answers.Answers{
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"provider": "github", "visibility": "public",
+		// enable_codeql / enable_govulncheck deliberately absent
+	}
+	raw := renderSettings(t, "repo-settings-go", a)
+
+	var d settings.Desired
+	require.NoError(t, yaml.Unmarshal([]byte(raw), &d))
+	require.Len(t, d.Rulesets, 1)
+	require.ElementsMatch(t, []string{
+		"lint", "test", "typos", "pr-title", "dependency-review", "actionlint",
+	}, d.Rulesets[0].RequiredStatusChecks,
+		"the checks security-go would have provided are dropped, not left dangling")
+}
+
+func TestRepoSettingsRustRendersWithoutOptionalAnswers(t *testing.T) {
+	raw := renderSettings(t, "repo-settings-rust", answers.Answers{
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"provider": "github", "visibility": "public",
+	})
+	var d settings.Desired
+	require.NoError(t, yaml.Unmarshal([]byte(raw), &d))
+	require.ElementsMatch(t, []string{
+		"lint", "test", "typos", "pr-title", "review", "actionlint",
+	}, d.Rulesets[0].RequiredStatusChecks)
+}

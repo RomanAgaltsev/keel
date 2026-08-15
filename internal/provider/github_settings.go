@@ -85,9 +85,17 @@ type ghSecurityGroup struct {
 	repoURL, alertsURL, fixesURL string
 	analysis                     map[string]any // staged security_and_analysis
 	toggles                      []toggle
+	unsupported                  []settings.Unsupported
 }
 
 func (s *ghSecurityGroup) Name() string { return "security" }
+
+// Unsupported reports declared analysis keys this repository will not report, so
+// they are never mistaken for drift. Populated by Plan, which is why Reconcile
+// queries it afterwards.
+func (s *ghSecurityGroup) Unsupported(_ settings.Desired) []settings.Unsupported {
+	return s.unsupported
+}
 
 // ghAnalysisState decodes the security_and_analysis object, whose members are
 // each {"status":"enabled"|"disabled"}.
@@ -101,17 +109,20 @@ type ghAnalysisState struct {
 	} `json:"security_and_analysis"`
 }
 
-// enabled reports whether the named analysis feature is on. An absent member
-// means the feature is unavailable on this repo, which reads as off.
-func (a ghAnalysisState) enabled(name string) bool {
-	return a.SecurityAndAnalysis[name].Status == "enabled"
+// enabled reports whether the named analysis feature is on, and whether the
+// provider reported it at all. An absent member reads as off, but the caller must
+// know the difference: a member GitHub does not report is one keel cannot
+// converge, and staging a write for it produces drift that never clears.
+func (a ghAnalysisState) enabled(name string) (on, reported bool) {
+	m, ok := a.SecurityAndAnalysis[name]
+	return m.Status == "enabled", ok
 }
 
 func (s *ghSecurityGroup) Plan(ctx context.Context, d settings.Desired) ([]settings.Change, error) {
 	if d.Security == nil {
 		return nil, nil
 	}
-	s.analysis, s.toggles = map[string]any{}, nil
+	s.analysis, s.toggles, s.unsupported = map[string]any{}, nil, nil
 	var out []settings.Change
 	w := d.Security
 
@@ -148,8 +159,20 @@ func (s *ghSecurityGroup) diffAnalysis(out *[]settings.Change, cur ghAnalysisSta
 	if want == nil {
 		return
 	}
-	got := cur.enabled(name)
+	got, reported := cur.enabled(name)
 	if got == *want {
+		return
+	}
+	if !reported {
+		// GitHub omits members it will not let this repository manage — most
+		// visibly dependency_graph on a public repo, which is always on and cannot
+		// be turned off. Writing it is accepted and changes nothing, so treating
+		// this as drift would report the same difference on every run forever.
+		s.unsupported = append(s.unsupported, settings.Unsupported{
+			Key:      "security." + name,
+			Provider: "github",
+			Reason:   "this repository does not report " + name + "; it cannot be converged here",
+		})
 		return
 	}
 	status := "disabled"
@@ -399,6 +422,7 @@ func equalStrings(a, b []string) bool {
 type ghActionsGroup struct {
 	gh       *GitHub
 	permURL  string
+	enabled  bool           // current …/actions/permissions "enabled", echoed back on write
 	perm     map[string]any // staged PUT …/actions/permissions
 	selected map[string]any // staged PUT …/actions/permissions/selected-actions
 	workflow map[string]any // staged PUT …/actions/permissions/workflow
@@ -439,12 +463,15 @@ func (a *ghActionsGroup) planAllowed(ctx context.Context, out *[]settings.Change
 	if got == *want {
 		return nil
 	}
+	// "enabled" is required by the endpoint — omitting it is a 422, caught by the
+	// 2026-08-15 acceptance run — and the current value is echoed back rather than
+	// assumed, so setting a policy never switches Actions on or off as a side effect.
 	switch *want {
 	case settings.AllowedLocalAndVerified:
-		a.perm = map[string]any{"allowed_actions": "selected"}
+		a.perm = map[string]any{"enabled": a.enabled, "allowed_actions": "selected"}
 		a.selected = map[string]any{"github_owned_allowed": true, "verified_allowed": true, "patterns_allowed": []string{}}
 	default:
-		a.perm = map[string]any{"allowed_actions": *want}
+		a.perm = map[string]any{"enabled": a.enabled, "allowed_actions": *want}
 	}
 	*out = append(*out, settings.Change{Key: "actions.allowed", From: got, To: *want})
 	return nil
@@ -454,11 +481,13 @@ func (a *ghActionsGroup) planAllowed(ctx context.Context, out *[]settings.Change
 // "selected" into local_and_verified when the selected-actions payload says so.
 func (a *ghActionsGroup) readAllowed(ctx context.Context) (string, error) {
 	var cur struct {
+		Enabled        bool   `json:"enabled"`
 		AllowedActions string `json:"allowed_actions"`
 	}
 	if err := a.gh.getJSON(ctx, a.permURL, &cur); err != nil {
 		return "", err
 	}
+	a.enabled = cur.Enabled
 	if cur.AllowedActions != "selected" {
 		return cur.AllowedActions, nil
 	}

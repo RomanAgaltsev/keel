@@ -83,10 +83,15 @@ Without it, groups fail individually and are reported; nothing else is affected.
 ## Sharp edges
 
 **A required status check that never reports blocks every pull request.** The
-`required_status_checks` list must match the *job* names in `.github/workflows/`. If you
-remove a discipline module, remove its check here too. This fails quietly: repository
-admins are waved through by the `repo_admin` bypass, so the person most likely to notice
-is the one least likely to be blocked.
+`required_status_checks` list must match the *job* names in `.github/workflows/`. This
+fails quietly: repository admins are waved through by the `repo_admin` bypass, so the
+person most likely to notice is the one least likely to be blocked.
+
+The rendered list adapts to your *answers* — turning off `enable_codeql` drops `codeql` —
+but it cannot see which **modules** your recipe selected. A custom recipe that takes
+`repo-settings-go` without `security-go` still lists `dependency-review` and `actionlint`,
+which nothing will then report. **Remove those two lines by hand**, or keep `security-go`.
+The stock `go-service` and `rust-service` recipes are always consistent.
 
 **Rulesets need GitHub Pro on a private repository.** On a free plan keel reports the
 ruleset as *unsupported* — not failed — converges everything else, and moves on.

@@ -46,10 +46,10 @@ rulesets:
       - pr-title
       - dependency-review
       - actionlint
-{{- if .enable_codeql }}
+{{- if index . "enable_codeql" }}
       - codeql
 {{- end }}
-{{- if .enable_govulncheck }}
+{{- if index . "enable_govulncheck" }}
       - govulncheck
 {{- end }}
     required_approving_reviews: 0
