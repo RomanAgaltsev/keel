@@ -29,7 +29,7 @@ func TestSecurityConsolidatedAndGated(t *testing.T) {
 	wf := plan.Files[".github/workflows/security.yml"]
 	require.NotContains(t, wf, "codeql-action") // gated off
 	require.Contains(t, wf, "govulncheck")      // gated on
-	require.Contains(t, wf, "dependency-review-action@v5")
+	require.Contains(t, wf, "dependency-review-action@")
 	require.Contains(t, wf, "rhysd/actionlint:1.7.7")
 	// The escaped `${{` survived rendering rather than being eaten as a Go action.
 	require.Contains(t, wf, "${{ github.event_name == 'pull_request' }}")

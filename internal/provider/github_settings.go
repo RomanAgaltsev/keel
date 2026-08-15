@@ -204,7 +204,7 @@ func (s *ghSecurityGroup) diffToggle(ctx context.Context, out *[]settings.Change
 	return nil
 }
 
-func (s *ghSecurityGroup) Apply(ctx context.Context, _ []settings.Change) error {
+func (s *ghSecurityGroup) Apply(ctx context.Context) error {
 	if len(s.analysis) > 0 {
 		body := map[string]any{"security_and_analysis": s.analysis}
 		if err := s.gh.sendJSON(ctx, http.MethodPatch, s.repoURL, body); err != nil {
@@ -251,7 +251,7 @@ func (v *ghVulnReportingGroup) Plan(ctx context.Context, d settings.Desired) ([]
 	}}, nil
 }
 
-func (v *ghVulnReportingGroup) Apply(ctx context.Context, _ []settings.Change) error {
+func (v *ghVulnReportingGroup) Apply(ctx context.Context) error {
 	if v.want == nil {
 		return nil
 	}
@@ -356,7 +356,7 @@ func (r *ghRepoGroup) Plan(ctx context.Context, d settings.Desired) ([]settings.
 	return out, nil
 }
 
-func (r *ghRepoGroup) Apply(ctx context.Context, _ []settings.Change) error {
+func (r *ghRepoGroup) Apply(ctx context.Context) error {
 	if len(r.body) == 0 {
 		return nil
 	}
@@ -395,7 +395,7 @@ func (t *ghTopicsGroup) Plan(ctx context.Context, d settings.Desired) ([]setting
 	}}, nil
 }
 
-func (t *ghTopicsGroup) Apply(ctx context.Context, _ []settings.Change) error {
+func (t *ghTopicsGroup) Apply(ctx context.Context) error {
 	if t.want == nil {
 		return nil
 	}
@@ -535,7 +535,7 @@ func (a *ghActionsGroup) planWorkflow(ctx context.Context, out *[]settings.Chang
 	return nil
 }
 
-func (a *ghActionsGroup) Apply(ctx context.Context, _ []settings.Change) error {
+func (a *ghActionsGroup) Apply(ctx context.Context) error {
 	if a.perm != nil {
 		if err := a.gh.sendJSON(ctx, http.MethodPut, a.permURL, a.perm); err != nil {
 			return err
@@ -677,7 +677,7 @@ func (r *ghRulesetGroup) notePlanGated(d settings.Desired, err error) bool {
 	return true
 }
 
-func (r *ghRulesetGroup) Apply(ctx context.Context, _ []settings.Change) error {
+func (r *ghRulesetGroup) Apply(ctx context.Context) error {
 	for _, p := range r.pending {
 		if p.id == 0 {
 			if err := r.gh.sendJSON(ctx, http.MethodPost, r.url, p.body); err != nil {

@@ -99,9 +99,9 @@ func TestRepositoryGroupAppliesPatch(t *testing.T) {
 	g := groupByName(t, gh, "repository")
 
 	d := settings.Desired{Repository: &settings.Repository{HasWiki: ptr(false)}}
-	changes, err := g.Plan(context.Background(), d)
+	_, err := g.Plan(context.Background(), d)
 	require.NoError(t, err)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 
 	require.Equal(t, map[string]any{"has_wiki": false}, got,
 		"the PATCH body must carry only the drifted, declared fields")
@@ -145,7 +145,7 @@ func TestTopicsGroupReplacesWholeList(t *testing.T) {
 	require.Equal(t, "[old]", changes[0].From)
 	require.Equal(t, "[go cli]", changes[0].To)
 
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 	require.Equal(t, map[string]any{"names": []any{"go", "cli"}}, got)
 }
 
@@ -198,7 +198,7 @@ func TestSecurityGroupPatchesAnalysisAndTogglesAlerts(t *testing.T) {
 	}}
 	changes, err := g.Plan(context.Background(), d)
 	require.NoError(t, err)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 
 	keys := make([]string, 0, len(changes))
 	for _, c := range changes {
@@ -261,7 +261,7 @@ func TestSecurityGroupDisablesWithDelete(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, changes, 1)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 	require.Equal(t, []string{"/repos/me/demo/vulnerability-alerts"}, deletes)
 }
 
@@ -287,7 +287,7 @@ func TestVulnReportingGroup(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, changes, 1)
 	require.Equal(t, "security.private_vulnerability_reporting", changes[0].Key)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 	require.Equal(t, []string{http.MethodPut}, puts)
 }
 
@@ -335,7 +335,7 @@ func TestActionsGroupTranslatesLocalAndVerified(t *testing.T) {
 	}}
 	changes, err := g.Plan(context.Background(), d)
 	require.NoError(t, err)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 
 	keys := make([]string, 0, len(changes))
 	for _, c := range changes {
@@ -459,7 +459,7 @@ func TestRulesetGroupCreatesWhenAbsent(t *testing.T) {
 	require.Len(t, changes, 1)
 	require.Equal(t, `ruleset."keel: main"`, changes[0].Key)
 	require.Equal(t, "absent", changes[0].From)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 
 	require.Equal(t, "keel: main", posted["name"])
 	require.Equal(t, "active", posted["enforcement"])
@@ -507,7 +507,7 @@ func TestRulesetGroupUpdatesExistingByName(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, changes, 1)
 	require.Contains(t, changes[0].From, "lint")
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 	require.Equal(t, "/repos/me/demo/rulesets/7", putPath, "an existing ruleset is updated in place, not duplicated")
 }
 
@@ -629,9 +629,9 @@ func TestActionsGroupSendsEnabledWithAllowedActions(t *testing.T) {
 	g := groupByName(t, gh, "actions")
 
 	d := settings.Desired{Actions: &settings.Actions{Allowed: ptr(settings.AllowedLocalOnly)}}
-	changes, err := g.Plan(context.Background(), d)
+	_, err := g.Plan(context.Background(), d)
 	require.NoError(t, err)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 
 	require.Contains(t, perm, "enabled", `GitHub rejects the PUT without "enabled"`)
 	require.Equal(t, true, perm["enabled"], "the current value is preserved, not assumed")
@@ -655,11 +655,11 @@ func TestActionsGroupPreservesDisabledActions(t *testing.T) {
 
 	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
 	g := groupByName(t, gh, "actions")
-	changes, err := g.Plan(context.Background(), settings.Desired{
+	_, err := g.Plan(context.Background(), settings.Desired{
 		Actions: &settings.Actions{Allowed: ptr(settings.AllowedLocalOnly)},
 	})
 	require.NoError(t, err)
-	require.NoError(t, g.Apply(context.Background(), changes))
+	require.NoError(t, g.Apply(context.Background()))
 	require.Equal(t, false, perm["enabled"])
 }
 

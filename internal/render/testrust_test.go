@@ -40,5 +40,8 @@ func TestTestRustWithCoverage(t *testing.T) {
 	require.NoError(t, err)
 	cov := plan.Files[".github/workflows/coverage.yml"]
 	require.Contains(t, cov, "cargo llvm-cov")
-	require.Contains(t, cov, "codecov/codecov-action@v5")
+	// Asserted by action name, not by pin: the version is owned by
+	// TestTemplatePinsMatchKeelsOwnWorkflows, and hardcoding it here made this
+	// test fail on every legitimate bump.
+	require.Contains(t, cov, "codecov/codecov-action@")
 }

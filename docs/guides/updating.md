@@ -131,19 +131,24 @@ never deletes a file it once wrote.
   `dependency-review.yml` and `actionlint.yml` are replaced by `security.yml`.
   `keel update` prints the exact commands:
 
-  ```text
-  5 file(s) are no longer produced by keel and were left in place:
+  Since 2.1.0 keel **deletes** those for you, as long as they still match the bytes
+  keel wrote:
 
-      rm .github/workflows/actionlint.yml
-      rm .github/workflows/codeql.yml
-      rm .github/workflows/dependency-review.yml
-      rm .github/workflows/govulncheck.yml
-      rm main.go
+  ```text
+  removed   .github/workflows/actionlint.yml         (deleted)
+  removed   .github/workflows/codeql.yml             (deleted)
+  removed   .github/workflows/dependency-review.yml  (deleted)
+  removed   .github/workflows/govulncheck.yml        (deleted)
+  removed   main.go                                  (deleted)
   ```
 
-  Until you run them the old workflows keep firing alongside the new one, on their
-  old action pins.
+  A file you edited is never deleted — it is listed as `(edited — left in place)`
+  and repeated afterwards with an `rm` you can run yourself. Until you do, that one
+  keeps firing alongside `security.yml`, on its old action pins.
 
-If branch protection required the old checks by name, update it: the job names are
-now `lint`, `test`, `typos`, `pr-title`, `actionlint`, `dependency-review`, plus
-`codeql` and `govulncheck` when enabled.
+Branch protection is keel's job since 2.3.0: `.github/keel-settings.yml` declares
+the required checks and `keel settings apply` converges them. If you are upgrading
+a repo that predates that file, `keel update` adds it — run `keel settings apply`
+once afterwards. For a repo whose protection you still manage by hand, the job
+names are `lint`, `test`, `typos`, `pr-title`, `actionlint`, `dependency-review`,
+plus `codeql` and `govulncheck` when enabled.

@@ -1,6 +1,6 @@
 name: test-go
 description: race/shuffle test workflow with coverage and optional Codecov upload
-version: 2.0.0
+version: 2.1.0
 language: go
 requires: [base-layout]
 questions:

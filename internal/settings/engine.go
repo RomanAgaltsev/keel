@@ -47,11 +47,15 @@ func (r Report) InSync() bool { return len(r.Changes) == 0 }
 // without a second code path.
 //
 // A Group is stateful across the pair: Apply applies what the most recent Plan
-// computed, and Reconcile is the only caller, so the order is guaranteed.
+// computed, and Reconcile is the only caller, so the order is guaranteed. Apply
+// therefore takes no changes — it deliberately cannot be asked to apply a subset,
+// because it has no way to honour one. An earlier signature accepted a []Change
+// that every implementation ignored, which advertised a contract none of them
+// kept: a caller filtering the list would silently have got everything applied.
 type Group interface {
 	Name() string
 	Plan(ctx context.Context, d Desired) ([]Change, error)
-	Apply(ctx context.Context, changes []Change) error
+	Apply(ctx context.Context) error
 }
 
 // Unsupporter is implemented by Groups that can report declared keys their
@@ -88,7 +92,7 @@ func Reconcile(ctx context.Context, groups []Group, d Desired, apply bool) Repor
 		if !apply {
 			continue
 		}
-		if err := g.Apply(ctx, changes); err != nil {
+		if err := g.Apply(ctx); err != nil {
 			rep.Failed = append(rep.Failed, Failure{Group: g.Name(), Reason: err.Error()})
 		}
 	}

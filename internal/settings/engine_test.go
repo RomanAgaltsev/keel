@@ -17,7 +17,6 @@ type fakeGroup struct {
 	planErr     error
 	applyErr    error
 	applyCalled bool
-	applied     []settings.Change
 }
 
 func (f *fakeGroup) Name() string { return f.name }
@@ -26,9 +25,8 @@ func (f *fakeGroup) Plan(_ context.Context, _ settings.Desired) ([]settings.Chan
 	return f.changes, f.planErr
 }
 
-func (f *fakeGroup) Apply(_ context.Context, ch []settings.Change) error {
+func (f *fakeGroup) Apply(_ context.Context) error {
 	f.applyCalled = true
-	f.applied = ch
 	return f.applyErr
 }
 
@@ -74,7 +72,6 @@ func TestReconcileAppliesChanges(t *testing.T) {
 	rep := settings.Reconcile(context.Background(), []settings.Group{g}, settings.Desired{}, true)
 
 	require.True(t, g.applyCalled)
-	require.Len(t, g.applied, 1)
 	require.True(t, rep.Applied)
 	require.Len(t, rep.Changes, 1)
 	require.Empty(t, rep.Failed)

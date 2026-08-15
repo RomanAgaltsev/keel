@@ -8,7 +8,7 @@ release config, all rendered from your answers. It then `git init`s, writes the
 first commit, and (optionally) creates the remote and pushes — in one command.
 
 ```bash
-keel new --recipe go-service
+keel new --recipe go-service      # or go-library, or rust-service
 ```
 ## Where to go next
 

@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,6 +58,11 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 	lockPath := filepath.Join(f.path, ".scaffold.lock")
 	lk, err := lock.Read(lockPath)
 	if err != nil {
+		// The raw error repeats the path twice and offers no way forward. Match the
+		// guidance style `keel settings apply` uses for its own missing file.
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("no .scaffold.lock in %q — not a keel-scaffolded repo, or the wrong --path", f.path)
+		}
 		return err
 	}
 

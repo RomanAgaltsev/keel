@@ -26,7 +26,9 @@ func newListCmd() *cobra.Command {
 			}
 			fmt.Fprintln(out, "Recipes:")
 			for _, r := range recipes {
-				fmt.Fprintf(out, "  %-14s %s\n", r.Name, r.Language)
+				// The archetype is the only thing separating go-service from
+				// go-library in this list, so it has to be shown.
+				fmt.Fprintf(out, "  %-14s %-6s %s\n", r.Name, r.Language, r.Archetype)
 			}
 
 			l := module.NewFSLoader(keel.BuiltinFS)
