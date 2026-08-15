@@ -10,13 +10,32 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
 )
 
 // Recipe composes modules into a scaffoldable project type.
 type Recipe struct {
-	Name     string      `yaml:"name"`
-	Language string      `yaml:"language"`
-	Modules  []ModuleRef `yaml:"modules"`
+	Name      string      `yaml:"name"`
+	Language  string      `yaml:"language"`
+	Archetype string      `yaml:"archetype"` // service (default) | library | cli
+	Modules   []ModuleRef `yaml:"modules"`
+}
+
+// normalize applies defaults and rejects values outside a closed set. An empty
+// archetype means "service", so the shipped *-service recipes need no edit.
+// origin names the recipe or file path, so the error says which one is wrong.
+func (r *Recipe) normalize(origin string) error {
+	if r.Archetype == "" {
+		r.Archetype = answers.ArchetypeService
+	}
+	switch r.Archetype {
+	case answers.ArchetypeService, answers.ArchetypeLibrary, answers.ArchetypeCLI:
+		return nil
+	default:
+		return fmt.Errorf("recipe %q: invalid archetype %q: want service, library or cli",
+			origin, r.Archetype)
+	}
 }
 
 // ModuleNames returns the module names in recipe order.
@@ -99,6 +118,9 @@ func Load(fsys fs.FS, name string) (Recipe, error) {
 	if err := yaml.Unmarshal(b, &r); err != nil {
 		return Recipe{}, fmt.Errorf("parse recipe %q: %w", name, err)
 	}
+	if err := r.normalize(name); err != nil {
+		return Recipe{}, err
+	}
 	return r, nil
 }
 
@@ -111,6 +133,9 @@ func LoadFile(path string) (Recipe, error) {
 	var r Recipe
 	if err := yaml.Unmarshal(b, &r); err != nil {
 		return Recipe{}, fmt.Errorf("parse recipe %q: %w", path, err)
+	}
+	if err := r.normalize(path); err != nil {
+		return Recipe{}, err
 	}
 	return r, nil
 }

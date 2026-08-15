@@ -89,3 +89,32 @@ func TestLoadBuiltin(t *testing.T) {
 	_, err := Load(keel.BuiltinFS, "does-not-exist")
 	require.Error(t, err)
 }
+
+func TestLoadDefaultsArchetypeToService(t *testing.T) {
+	r, err := Load(keel.BuiltinFS, "go-service")
+	require.NoError(t, err)
+	require.Equal(t, "service", r.Archetype)
+}
+
+func TestLoadFileRejectsUnknownArchetype(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "bad.yaml")
+	require.NoError(t, os.WriteFile(p, []byte(
+		"name: bad\nlanguage: go\narchetype: daemon\nmodules: [base-layout]\n"), 0o600))
+
+	_, err := LoadFile(p)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "daemon")
+	require.Contains(t, err.Error(), "service, library or cli")
+}
+
+func TestLoadFileAcceptsLibrary(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "lib.yaml")
+	require.NoError(t, os.WriteFile(p, []byte(
+		"name: lib\nlanguage: go\narchetype: library\nmodules: [base-layout]\n"), 0o600))
+
+	r, err := LoadFile(p)
+	require.NoError(t, err)
+	require.Equal(t, "library", r.Archetype)
+}
