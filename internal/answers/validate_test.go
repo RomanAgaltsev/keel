@@ -14,7 +14,7 @@ func TestValidateRepoName(t *testing.T) {
 }
 
 func TestValidateModulePath(t *testing.T) {
-	require.NoError(t, ValidateModulePath("github.com/RomanAgaltsev/keel"))
+	require.NoError(t, ValidateModulePath("github.com/RomanAgaltsev/keel/v2"))
 	require.Error(t, ValidateModulePath("nopath"))
 	require.Error(t, ValidateModulePath("has space/x"))
 }

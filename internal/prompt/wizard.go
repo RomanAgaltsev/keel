@@ -7,8 +7,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 
-	"github.com/RomanAgaltsev/keel/internal/answers"
-	"github.com/RomanAgaltsev/keel/internal/manifest"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
 // Wizard is an Asker backed by a charmbracelet/huh form.

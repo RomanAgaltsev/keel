@@ -13,7 +13,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/RomanAgaltsev/keel/internal/modver"
+	"github.com/RomanAgaltsev/keel/v2/internal/modver"
 )
 
 var versionLine = regexp.MustCompile(`(?m)^(version:\s*)\S+([^\S\n]*)$`)

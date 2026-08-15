@@ -1,4 +1,4 @@
-module github.com/RomanAgaltsev/keel
+module github.com/RomanAgaltsev/keel/v2
 
 go 1.26
 

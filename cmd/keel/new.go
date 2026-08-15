@@ -11,15 +11,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/RomanAgaltsev/keel"
-	"github.com/RomanAgaltsev/keel/internal/answers"
-	"github.com/RomanAgaltsev/keel/internal/config"
-	"github.com/RomanAgaltsev/keel/internal/module"
-	"github.com/RomanAgaltsev/keel/internal/prompt"
-	"github.com/RomanAgaltsev/keel/internal/provider"
-	"github.com/RomanAgaltsev/keel/internal/recipe"
-	"github.com/RomanAgaltsev/keel/internal/scaffold"
-	"github.com/RomanAgaltsev/keel/internal/source"
+	"github.com/RomanAgaltsev/keel/v2"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/config"
+	"github.com/RomanAgaltsev/keel/v2/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/prompt"
+	"github.com/RomanAgaltsev/keel/v2/internal/provider"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
+	"github.com/RomanAgaltsev/keel/v2/internal/scaffold"
+	"github.com/RomanAgaltsev/keel/v2/internal/source"
 )
 
 // newFlags holds the parsed flags for the new command.

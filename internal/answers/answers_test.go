@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
 )
 
 func TestAnswersBool(t *testing.T) {

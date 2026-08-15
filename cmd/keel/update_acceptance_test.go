@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
 )
 
 // seedPreHealthLock writes a .scaffold.lock as an older keel wrote it: go-service

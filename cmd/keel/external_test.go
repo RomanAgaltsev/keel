@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
 )
 
 func TestNewWithExternalDirModule(t *testing.T) {

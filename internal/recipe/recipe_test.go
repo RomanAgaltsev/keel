@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/RomanAgaltsev/keel"
+	"github.com/RomanAgaltsev/keel/v2"
 )
 
 func TestParseRecipeBuiltinAndExternal(t *testing.T) {

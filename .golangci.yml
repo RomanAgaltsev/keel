@@ -111,7 +111,7 @@ linters:
             - $all
           allow:
             - $gostd
-            - "github.com/RomanAgaltsev/keel"
+            - "github.com/RomanAgaltsev/keel/v2"
             - "github.com/charmbracelet/huh"
             - "github.com/spf13/cobra"
             - "github.com/stretchr/testify"
@@ -152,5 +152,5 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(github.com/RomanAgaltsev/keel)
+        - prefix(github.com/RomanAgaltsev/keel/v2)
       no-inline-comments: false

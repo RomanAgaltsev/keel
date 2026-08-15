@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/RomanAgaltsev/keel/internal/render"
+	"github.com/RomanAgaltsev/keel/v2/internal/render"
 )
 
 // Applied reports what Apply wrote, each list sorted by path.

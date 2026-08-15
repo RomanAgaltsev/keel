@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel"
-	"github.com/RomanAgaltsev/keel/internal/answers"
-	"github.com/RomanAgaltsev/keel/internal/module"
-	"github.com/RomanAgaltsev/keel/internal/render"
+	"github.com/RomanAgaltsev/keel/v2"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/render"
 )
 
 func testGoPlan(t *testing.T, codecov bool) render.Plan {

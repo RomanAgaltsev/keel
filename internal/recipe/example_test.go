@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/RomanAgaltsev/keel"
-	"github.com/RomanAgaltsev/keel/internal/recipe"
+	"github.com/RomanAgaltsev/keel/v2"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
 )
 
 // ExampleLoad loads a builtin recipe from the embedded filesystem.

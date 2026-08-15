@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel"
-	"github.com/RomanAgaltsev/keel/internal/module"
-	"github.com/RomanAgaltsev/keel/internal/recipe"
-	"github.com/RomanAgaltsev/keel/internal/render"
+	"github.com/RomanAgaltsev/keel/v2"
+	"github.com/RomanAgaltsev/keel/v2/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
+	"github.com/RomanAgaltsev/keel/v2/internal/render"
 )
 
 func TestRustServiceGolden(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/update"
+	"github.com/RomanAgaltsev/keel/v2/internal/update"
 )
 
 func TestApplyWritesByClass(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/provider"
+	"github.com/RomanAgaltsev/keel/v2/internal/provider"
 )
 
 func TestFakeRecordsCreate(t *testing.T) {

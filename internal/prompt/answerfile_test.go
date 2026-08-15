@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/prompt"
+	"github.com/RomanAgaltsev/keel/v2/internal/prompt"
 )
 
 func TestLoadAnswersFile(t *testing.T) {

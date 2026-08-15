@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/recipe"
-	"github.com/RomanAgaltsev/keel/internal/source"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
+	"github.com/RomanAgaltsev/keel/v2/internal/source"
 )
 
 func writeModuleDir(t *testing.T, dir string) {

@@ -11,12 +11,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel"
-	"github.com/RomanAgaltsev/keel/internal/answers"
-	"github.com/RomanAgaltsev/keel/internal/lock"
-	"github.com/RomanAgaltsev/keel/internal/modver"
-	"github.com/RomanAgaltsev/keel/internal/recipe"
-	"github.com/RomanAgaltsev/keel/internal/update"
+	"github.com/RomanAgaltsev/keel/v2"
+	"github.com/RomanAgaltsev/keel/v2/internal/answers"
+	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/modver"
+	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
+	"github.com/RomanAgaltsev/keel/v2/internal/update"
 )
 
 func TestUpdateDryRunReportsBehindModule(t *testing.T) {

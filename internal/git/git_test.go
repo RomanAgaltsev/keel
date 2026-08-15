@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/RomanAgaltsev/keel/internal/git"
+	"github.com/RomanAgaltsev/keel/v2/internal/git"
 )
 
 func TestInitCommitAndIsRepo(t *testing.T) {
