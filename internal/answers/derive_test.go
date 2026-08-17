@@ -52,3 +52,18 @@ func TestPackageName(t *testing.T) {
 		})
 	}
 }
+
+func TestDeriveInitialVersionFromArchetype(t *testing.T) {
+	lib := answers.Derive(answers.Answers{"archetype": answers.ArchetypeLibrary, "repo_name": "demo"})
+	require.Equal(t, "0.1.0", lib["initial_version"])
+	require.Equal(t, true, lib["pre_major"])
+
+	svc := answers.Derive(answers.Answers{"archetype": answers.ArchetypeService, "repo_name": "demo"})
+	require.Equal(t, "1.0.0", svc["initial_version"])
+	require.Equal(t, false, svc["pre_major"])
+
+	// The default archetype is service, so an unset archetype must not
+	// accidentally put a service into 0.x.
+	def := answers.Derive(answers.Answers{"repo_name": "demo"})
+	require.Equal(t, "1.0.0", def["initial_version"])
+}

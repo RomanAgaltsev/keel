@@ -7,7 +7,7 @@ files: # dest is always "." — src carries the subdir
   - src: ".goreleaser.yaml.tmpl"
     dest: "."
     when: '{{ not .is_library }}'
-  - src: "release-please-config.json"
+  - src: "release-please-config.json.tmpl"
     dest: "."
   - src: ".release-please-manifest.json"
     dest: "."

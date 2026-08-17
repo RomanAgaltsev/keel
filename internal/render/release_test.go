@@ -51,3 +51,20 @@ func TestReleaseGoPreservesGoReleaserTemplating(t *testing.T) {
 	require.Contains(t, got, "-X main.version={{ .Version }}") // GoReleaser's, not keel's
 	require.Contains(t, got, "binary: demo")                   // keel's, substituted
 }
+
+// TestReleaseGoLibraryStartsAtZeroOne guards #55. Go enforces the major version
+// in the import path, so a library that ships 1.0.0 and then needs a breaking
+// change must move to /v2 and make every consumer edit their imports.
+func TestReleaseGoLibraryStartsAtZeroOne(t *testing.T) {
+	cfg := planForRecipe(t, "go-library").Files["release-please-config.json"]
+	require.Contains(t, cfg, `"initial-version": "0.1.0"`)
+	// Without this, release-please promotes the first breaking change straight
+	// to 1.0.0 and silently undoes the choice.
+	require.Contains(t, cfg, `"bump-minor-pre-major": true`)
+}
+
+func TestReleaseGoServiceStartsAtOne(t *testing.T) {
+	cfg := planForRecipe(t, "go-service").Files["release-please-config.json"]
+	require.Contains(t, cfg, `"initial-version": "1.0.0"`)
+	require.Contains(t, cfg, `"bump-minor-pre-major": false`)
+}
