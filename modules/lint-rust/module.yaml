@@ -1,6 +1,6 @@
 name: lint-rust
 description: rustfmt + clippy config and lint workflow
-version: 1.1.0
+version: 1.2.0
 language: rust
 requires: [base-layout]
 files: # dest is always "." — src carries the subdir

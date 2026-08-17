@@ -1,6 +1,6 @@
 name: security-go
 description: CodeQL, govulncheck, dependency-review, workflow linting
-version: 2.1.0
+version: 2.2.0
 language: go
 requires: [base-layout]
 questions:

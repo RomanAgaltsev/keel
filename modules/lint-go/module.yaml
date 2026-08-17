@@ -1,6 +1,6 @@
 name: lint-go
 description: golangci-lint v2 config + lint workflow
-version: 2.1.0
+version: 2.2.0
 language: go
 requires: [base-layout]
 files:

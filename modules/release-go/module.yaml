@@ -1,6 +1,6 @@
 name: release-go
 description: release-please releases, with GoReleaser binaries for binary archetypes
-version: 2.2.0
+version: 2.3.0
 language: go
 requires: [base-layout]
 files: # dest is always "." — src carries the subdir

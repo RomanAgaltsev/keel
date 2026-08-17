@@ -1,6 +1,6 @@
 name: release-rust
 description: release-plz (version/changelog) + cargo-dist (binaries) with a conventional-commit gate
-version: 1.1.0
+version: 1.2.0
 language: rust
 requires: [base-layout]
 files: # dest is always "." — src carries the subdir
