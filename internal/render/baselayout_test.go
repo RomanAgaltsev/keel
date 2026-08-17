@@ -22,6 +22,16 @@ func baseLayout(t *testing.T, provider string) render.Plan {
 	return plan
 }
 
+// TestBaseLayoutShipsGitattributes guards #56. Without this file a Windows
+// clone under core.autocrlf=true gets a CRLF working tree, gci and gofumpt
+// normalise to LF, and `task lint` reports every Go file as unformatted --
+// while CI stays green, because lint.yml runs only on ubuntu.
+func TestBaseLayoutShipsGitattributes(t *testing.T) {
+	got, ok := baseLayout(t, "github").Files[".gitattributes"]
+	require.True(t, ok, "base-layout must render .gitattributes")
+	require.Contains(t, got, "* text=auto eol=lf")
+}
+
 func TestBaseLayoutGitignoreCoversCoverage(t *testing.T) {
 	got := baseLayout(t, "github").Files[".gitignore"]
 	require.Contains(t, got, "coverage.out")
