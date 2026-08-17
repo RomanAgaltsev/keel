@@ -23,7 +23,11 @@ security:
 
 actions:
   allowed: local_and_verified
+  allowed_patterns:
+    - arduino/setup-task@*
+    - crate-ci/typos@*
   default_workflow_permissions: read
+  can_approve_pull_request_reviews: true
 
 rulesets:
   - name: "keel: main"
@@ -42,6 +46,35 @@ every field is optional: `has_wiki: false` and an absent `has_wiki` mean differe
 
 `.github/keel-settings.yml` is deliberately *not* `.github/settings.yml`, which the Probot
 Settings app watches. The two would fight over the same file.
+
+### Two lists you should not hand-edit
+
+`required_status_checks` and `actions.allowed_patterns` are **computed from the
+modules the recipe includes**. Each module declares the checks it reports and
+the actions it uses in its own `emits` block (see
+[the manifest schema](../reference/manifest-schema.md#emits)), and keel renders
+the union.
+
+Editing either by hand in a scaffolded repo works until the next
+`keel new`/`keel update` regenerates the file. Change the module set, or the
+module's own `emits` block, instead.
+
+The two lists are why this matters more than tidiness:
+
+- a required check nothing reports leaves every pull request `BLOCKED` with all
+  runs green, and
+- an action outside `allowed_patterns` makes its workflow fail to *start* —
+  `startup_failure` at 0s, no check reported, and it cannot be re-run, so
+  recovering needs a fresh push.
+
+`allowed_patterns` extends `local_and_verified` rather than replacing it: the
+policy stays "GitHub-owned, verified, **and** these named third parties". It is
+only valid alongside `allowed: local_and_verified`; `all` needs no list and
+`local_only` admits none.
+
+`can_approve_pull_request_reviews` is on when a module in the recipe asks for it
+— release-please and release-plz both need it to open their release PRs.
+`default_workflow_permissions` stays `read` regardless.
 
 ## Applying it
 
