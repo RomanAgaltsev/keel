@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.0](https://github.com/RomanAgaltsev/keel/compare/v2.4.2...v2.5.0) (2026-08-17)
+
+
+### Features
+
+* the module emits contract ([#60](https://github.com/RomanAgaltsev/keel/issues/60)) ([c2c8397](https://github.com/RomanAgaltsev/keel/commit/c2c8397b7fae4bfbd7adb1effc5bdfe9417fe9f8))
+
 ## [2.4.2](https://github.com/RomanAgaltsev/keel/compare/v2.4.1...v2.4.2) (2026-08-17)
 
 
