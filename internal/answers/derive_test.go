@@ -67,3 +67,12 @@ func TestDeriveInitialVersionFromArchetype(t *testing.T) {
 	def := answers.Derive(answers.Answers{"repo_name": "demo"})
 	require.Equal(t, "1.0.0", def["initial_version"])
 }
+
+func TestDeriveRepoSlug(t *testing.T) {
+	got := answers.Derive(answers.Answers{"module_path": "github.com/acme/demo", "repo_name": "demo"})
+	require.Equal(t, "acme/demo", got["repo_slug"])
+
+	// A module path with no host is left alone rather than mangled.
+	bare := answers.Derive(answers.Answers{"module_path": "demo", "repo_name": "demo"})
+	require.Equal(t, "demo", bare["repo_slug"])
+}
