@@ -1,6 +1,6 @@
 name: base-layout
-description: README and .gitignore common to every repo
-version: 2.1.0
+description: README, .gitignore and .gitattributes common to every repo
+version: 2.2.0
 language: any
 files:
   - src: "*"
