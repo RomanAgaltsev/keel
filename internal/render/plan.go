@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"io/fs"
+	"slices"
 	"sort"
 
 	"github.com/RomanAgaltsev/keel/v2/internal/answers"
@@ -19,6 +20,12 @@ type moduleFS struct {
 // Plan is the merged set of files to write (dest path -> rendered content).
 type Plan struct {
 	Files map[string]string
+
+	// Answers is the answer set the templates were rendered with, including the
+	// derived keys. Exposed so tests and callers can assert on what the recipe
+	// actually computed rather than re-deriving it.
+	Answers answers.Answers
+
 	owner map[string]string // dest -> module name, for collision messages
 }
 
@@ -35,12 +42,16 @@ func (p Plan) Owner() map[string]string {
 // BuildPlan renders every module in order and merges the results, failing fast
 // on any cross-module destination collision.
 func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
-	// Templates are parsed with missingkey=error, so the archetype-derived keys
-	// must exist before any template runs. Deriving here covers every caller.
+	// Templates are parsed with missingkey=error, so the derived keys must exist
+	// before any template runs. Derive covers the answer-only keys; the emits
+	// union needs the module list, which only this function has.
 	a = answers.Derive(a)
+	a["emitted_checks"], a["emitted_actions"], a["emitted_needs"] = unionEmits(mods)
+
 	p := Plan{
-		Files: map[string]string{},
-		owner: map[string]string{},
+		Files:   map[string]string{},
+		Answers: a,
+		owner:   map[string]string{},
 	}
 	for _, mf := range mods {
 		files, err := renderModule(mf.Manifest, mf.FS, a)
@@ -61,6 +72,29 @@ func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
 		}
 	}
 	return p, nil
+}
+
+// unionEmits collects every module's declared contract into three sorted,
+// deduplicated lists. Sorted so a recipe renders byte-identically whatever
+// order its modules resolve in -- the golden trees depend on that.
+func unionEmits(mods []moduleFS) (checks, actions, needs []string) {
+	var c, ac, n []string
+	for _, mf := range mods {
+		c = append(c, mf.Manifest.Emits.Checks...)
+		ac = append(ac, mf.Manifest.Emits.Actions...)
+		n = append(n, mf.Manifest.Emits.Needs...)
+	}
+	return sortedSet(c), sortedSet(ac), sortedSet(n)
+}
+
+// sortedSet returns vals sorted with duplicates removed, never nil.
+func sortedSet(vals []string) []string {
+	slices.Sort(vals)
+	out := slices.Compact(vals)
+	if out == nil {
+		return []string{}
+	}
+	return out
 }
 
 // BuildRecipe resolves module names through the loader and builds the plan.
