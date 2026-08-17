@@ -17,5 +17,5 @@ files: # dest is always "." — src carries the subdir
 # The check is the aggregate gate job, not the matrix: the matrix reports one
 # context per OS, so its names change whenever the matrix does.
 emits:
-  checks: [test]
+  checks: [test, coverage]
   actions: [dtolnay/rust-toolchain, taiki-e/install-action, codecov/codecov-action]

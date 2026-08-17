@@ -105,7 +105,12 @@ func TestBuildPlanAggregatesEmits(t *testing.T) {
 	// order its modules resolve in -- the golden trees depend on that.
 	require.Equal(t, []string{"lint", "typos"}, p.Answers["emitted_checks"])
 	require.Equal(t, []string{"arduino/setup-task", "googleapis/release-please-action"}, p.Answers["emitted_actions"])
-	require.Equal(t, []string{manifest.NeedCanApprovePullRequestReviews}, p.Answers["emitted_needs"])
+
+	// A set, not a list: templates test membership with the index builtin, and
+	// keel registers no template functions.
+	require.Equal(t,
+		map[string]bool{manifest.NeedCanApprovePullRequestReviews: true},
+		p.Answers["emitted_needs"])
 }
 
 // TestBuildPlanEmitsKeysExistWhenNothingIsDeclared covers the missingkey=error
@@ -121,5 +126,5 @@ func TestBuildPlanEmitsKeysExistWhenNothingIsDeclared(t *testing.T) {
 	// explicit empty slice keeps the assertion unambiguous.
 	require.Equal(t, []string{}, p.Answers["emitted_checks"])
 	require.Equal(t, []string{}, p.Answers["emitted_actions"])
-	require.Equal(t, []string{}, p.Answers["emitted_needs"])
+	require.Equal(t, map[string]bool{}, p.Answers["emitted_needs"])
 }

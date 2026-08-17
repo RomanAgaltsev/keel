@@ -31,24 +31,39 @@ security:
   private_vulnerability_reporting: true
 
 actions:
+  # local_and_verified plus the third-party actions this recipe's own modules
+  # use. Both lists are computed from the modules present, so removing a module
+  # removes its action and its check together.
   allowed: local_and_verified
+  allowed_patterns:
+    - EmbarkStudios/cargo-deny-action@*
+    - MarcoIeni/release-plz-action@*
+    - amannn/action-semantic-pull-request@*
+    - codecov/codecov-action@*
+    - crate-ci/typos@*
+    - docker://rhysd/actionlint
+    - dtolnay/rust-toolchain@*
+    - rustsec/audit-check@*
+    - taiki-e/install-action@*
   default_workflow_permissions: read
-  can_approve_pull_request_reviews: false
+  # Enabled because a module in this recipe asked for it -- release-plz cannot
+  # open its release PR without it.
+  can_approve_pull_request_reviews: true
 
 rulesets:
   - name: "keel: main"
     target: branch
     ref: main
     required_status_checks:
+      - actionlint
+      - audit
+      - coverage
+      - deny
       - lint
-      - test
-      - typos
       - pr-title
       - review
-      - actionlint
-      - coverage
-      - audit
-      - deny
+      - test
+      - typos
     required_approving_reviews: 0
     required_linear_history: true
     block_force_push: true

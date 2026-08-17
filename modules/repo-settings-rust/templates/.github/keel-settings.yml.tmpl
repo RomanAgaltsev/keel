@@ -31,29 +31,39 @@ security:
   private_vulnerability_reporting: true
 
 actions:
+  # local_and_verified plus the third-party actions this recipe's own modules
+  # use. Both lists are computed from the modules present, so removing a module
+  # removes its action and its check together.
   allowed: local_and_verified
+  allowed_patterns:
+{{- range .emitted_action_patterns }}
+    - {{ . }}
+{{- end }}
   default_workflow_permissions: read
-  can_approve_pull_request_reviews: false
+  # Enabled because a module in this recipe asked for it -- release-plz cannot
+  # open its release PR without it.
+  can_approve_pull_request_reviews: {{ if index .emitted_needs "can_approve_pull_request_reviews" }}true{{ else }}false{{ end }}
 
 rulesets:
   - name: "keel: main"
     target: branch
     ref: main
     required_status_checks:
-      - lint
-      - test
-      - typos
-      - pr-title
-      - review
-      - actionlint
-{{- if index . "enable_codecov" }}
-      - coverage
-{{- end }}
-{{- if index . "enable_cargo_audit" }}
-      - audit
-{{- end }}
-{{- if index . "enable_cargo_deny" }}
-      - deny
+{{- range .emitted_checks }}
+      {{- /*
+        coverage, audit and deny are declared by their modules but rendered by
+        them only when their answer is on, so they are the checks a module can
+        emit conditionally. Naming them here is the one restatement this file
+        still makes; see the spec's open question on giving emits.checks its own
+        gate.
+      */}}
+      {{- $gated := or
+            (and (eq . "coverage") (not (index $ "enable_codecov")))
+            (and (eq . "audit") (not (index $ "enable_cargo_audit")))
+            (and (eq . "deny") (not (index $ "enable_cargo_deny"))) }}
+      {{- if not $gated }}
+      - {{ . }}
+      {{- end }}
 {{- end }}
     required_approving_reviews: 0
     required_linear_history: true
