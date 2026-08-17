@@ -1,6 +1,6 @@
 name: test-go
 description: race/shuffle test workflow with coverage and optional Codecov upload
-version: 2.1.0
+version: 2.2.0
 language: go
 requires: [base-layout]
 questions:
@@ -14,3 +14,8 @@ files: # dest is always "." — src carries the subdir
   - src: "codecov.yml.tmpl"
     dest: "."
     when: "{{ .enable_codecov }}"
+# The check is the aggregate gate job, not the matrix: the matrix reports one
+# context per OS, so its names change whenever the matrix does.
+emits:
+  checks: [test]
+  actions: [codecov/codecov-action]

@@ -711,3 +711,106 @@ func TestSecurityGroupAbsentMemberDeclaredFalseIsQuiet(t *testing.T) {
 	require.Empty(t, changes)
 	require.Empty(t, g.(settings.Unsupporter).Unsupported(d))
 }
+
+// actionsServer serves the three Actions endpoints from fixed state and records
+// every write body by path.
+func actionsServer(t *testing.T, perms, selected string, writes map[string]map[string]any) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			var b map[string]any
+			raw, _ := io.ReadAll(r.Body)
+			require.NoError(t, json.Unmarshal(raw, &b))
+			writes[r.URL.Path] = b
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		switch r.URL.Path {
+		case "/repos/me/demo/actions/permissions":
+			_, _ = w.Write([]byte(perms))
+		case "/repos/me/demo/actions/permissions/selected-actions":
+			if selected == "" {
+				w.WriteHeader(http.StatusConflict)
+				return
+			}
+			_, _ = w.Write([]byte(selected))
+		case "/repos/me/demo/actions/permissions/workflow":
+			_, _ = w.Write([]byte(`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`))
+		default:
+			t.Fatalf("unexpected GET %s", r.URL.Path)
+		}
+	}))
+}
+
+func planActions(t *testing.T, srv *httptest.Server, a settings.Actions) []settings.Change {
+	t.Helper()
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	changes, err := groupByName(t, gh, "actions").Plan(context.Background(), settings.Desired{Actions: &a})
+	require.NoError(t, err)
+	return changes
+}
+
+// TestActionsPlansPatternDriftWhenPolicyAlreadyMatches is the gap that made #52
+// unfixable by template alone: planAllowed returned early whenever the enum
+// matched, so a repo already on local_and_verified whose patterns had drifted
+// planned nothing at all and `settings apply --check` reported it as in sync.
+func TestActionsPlansPatternDriftWhenPolicyAlreadyMatches(t *testing.T) {
+	writes := map[string]map[string]any{}
+	srv := actionsServer(t,
+		`{"enabled":true,"allowed_actions":"selected"}`,
+		`{"github_owned_allowed":true,"verified_allowed":true,"patterns_allowed":["arduino/setup-task@*"]}`,
+		writes)
+	defer srv.Close()
+
+	changes := planActions(t, srv, settings.Actions{
+		Allowed:         ptr(settings.AllowedLocalAndVerified),
+		AllowedPatterns: []string{"arduino/setup-task@*", "crate-ci/typos@*"},
+	})
+
+	require.Len(t, changes, 1)
+	require.Equal(t, "actions.allowed_patterns", changes[0].Key)
+}
+
+func TestActionsPlansNothingWhenPatternsAlreadyMatch(t *testing.T) {
+	writes := map[string]map[string]any{}
+	srv := actionsServer(t,
+		`{"enabled":true,"allowed_actions":"selected"}`,
+		`{"github_owned_allowed":true,"verified_allowed":true,"patterns_allowed":["a/b@*","c/d@*"]}`,
+		writes)
+	defer srv.Close()
+
+	changes := planActions(t, srv, settings.Actions{
+		Allowed:         ptr(settings.AllowedLocalAndVerified),
+		AllowedPatterns: []string{"c/d@*", "a/b@*"}, // order must not matter
+	})
+
+	require.Empty(t, changes)
+	require.Empty(t, writes, "no write may be issued when nothing drifted")
+}
+
+func TestActionsPlansBothWhenPolicyAndPatternsChange(t *testing.T) {
+	writes := map[string]map[string]any{}
+	srv := actionsServer(t, `{"enabled":true,"allowed_actions":"all"}`, "", writes)
+	defer srv.Close()
+
+	gh := provider.NewGitHub("tok", "me", provider.WithBaseURL(srv.URL))
+	g := groupByName(t, gh, "actions")
+	changes, err := g.Plan(context.Background(), settings.Desired{Actions: &settings.Actions{
+		Allowed:         ptr(settings.AllowedLocalAndVerified),
+		AllowedPatterns: []string{"a/b@*"},
+	}})
+	require.NoError(t, err)
+	require.NoError(t, g.Apply(context.Background()))
+
+	keys := make([]string, len(changes))
+	for i, c := range changes {
+		keys[i] = c.Key
+	}
+	require.ElementsMatch(t, []string{"actions.allowed", "actions.allowed_patterns"}, keys)
+
+	// The patterns must actually reach the host, not merely be reported.
+	sel := writes["/repos/me/demo/actions/permissions/selected-actions"]
+	require.Equal(t, []any{"a/b@*"}, sel["patterns_allowed"])
+	require.Equal(t, true, sel["github_owned_allowed"])
+	require.Equal(t, true, sel["verified_allowed"])
+}

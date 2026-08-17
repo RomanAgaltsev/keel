@@ -43,3 +43,33 @@ func TestTestGoMatrixDoesNotFailFast(t *testing.T) {
 	require.Contains(t, wf, "${{ matrix.os }}")
 	require.Contains(t, wf, "actions/checkout@v7")
 }
+
+// TestTestGoEmitsAStableCheckContext guards #53. A matrixed job reports
+// `test (ubuntu-latest)` and never a bare `test`, so a ruleset requiring `test`
+// waits on a producer that does not exist and every PR sits BLOCKED with all
+// runs green.
+func TestTestGoEmitsAStableCheckContext(t *testing.T) {
+	wf := testGoPlan(t, false).Files[".github/workflows/test.yml"]
+
+	require.Contains(t, wf, "test-matrix:", "the matrixed job must be renamed")
+	require.Contains(t, wf, "needs: [test-matrix]", "the gate must depend on the matrix")
+	require.Contains(t, wf, "if: always()",
+		"without always() the gate is skipped when the matrix fails, and a skipped required check does not block")
+	require.Contains(t, wf, "exit 1",
+		"the gate must fail explicitly; reporting success by not running is the defect it prevents")
+}
+
+// TestTestGoPublishesCoverage guards #57. The default scaffold ran
+// -covermode=atomic on three OSes -- not free under -race -- and discarded
+// every profile, because the only consumer was a Codecov upload defaulting to
+// false.
+func TestTestGoPublishesCoverage(t *testing.T) {
+	wf := testGoPlan(t, false).Files[".github/workflows/test.yml"]
+	require.Contains(t, wf, "GITHUB_STEP_SUMMARY")
+	require.Contains(t, wf, "go tool cover -func=coverage.out")
+}
+
+func TestReadmeCoverageBadgeFollowsCodecov(t *testing.T) {
+	require.Contains(t, testGoPlan(t, true).Files["README.md"], "codecov.io/gh/acme/demo")
+	require.NotContains(t, testGoPlan(t, false).Files["README.md"], "codecov.io")
+}

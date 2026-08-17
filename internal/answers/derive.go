@@ -21,7 +21,7 @@ const (
 // the recipe stays the single source of truth for the archetype. Working on a
 // copy keeps both keys out of the lockfile's answers map.
 func Derive(a Answers) Answers {
-	out := make(Answers, len(a)+3)
+	out := make(Answers, len(a)+6)
 	for k, v := range a {
 		out[k] = v
 	}
@@ -32,7 +32,37 @@ func Derive(a Answers) Answers {
 	out["archetype"] = arch
 	out["is_library"] = arch == ArchetypeLibrary
 	out["package_name"] = PackageName(out.String("repo_name"))
+	out["repo_slug"] = RepoSlug(out.String("module_path"))
+
+	// A library that ships 1.0.0 has made a public API-stability commitment on
+	// its first commit, and in Go escaping it costs a /v2 import-path move that
+	// every consumer must follow. The 0.x range exists for exactly this, and
+	// archetype: library is keel's own signal that it applies. Nobody imports a
+	// service, so 1.0.0 stays right there.
+	out["initial_version"] = "1.0.0"
+	out["pre_major"] = false
+	if arch == ArchetypeLibrary {
+		out["initial_version"] = "0.1.0"
+		// Without this, release-please promotes the first breaking change from
+		// 0.x straight to 1.0.0, undoing the choice at the first feat!.
+		out["pre_major"] = true
+	}
 	return out
+}
+
+// RepoSlug strips the host from a module path, turning
+// "github.com/acme/demo" into "acme/demo".
+//
+// Badges that point at the forge can use the module path whole, because
+// https://github.com/acme/demo is a real URL. Third-party services key on the
+// owner/repo pair alone, and keel registers no template functions, so the
+// trimming happens here rather than in a template. A path with no separator is
+// returned unchanged.
+func RepoSlug(modulePath string) string {
+	if _, rest, ok := strings.Cut(modulePath, "/"); ok {
+		return rest
+	}
+	return modulePath
 }
 
 // PackageName converts a repository name into a legal Go package name: every

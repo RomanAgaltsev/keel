@@ -3,7 +3,9 @@ package render
 import (
 	"fmt"
 	"io/fs"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/RomanAgaltsev/keel/v2/internal/answers"
 	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
@@ -19,6 +21,12 @@ type moduleFS struct {
 // Plan is the merged set of files to write (dest path -> rendered content).
 type Plan struct {
 	Files map[string]string
+
+	// Answers is the answer set the templates were rendered with, including the
+	// derived keys. Exposed so tests and callers can assert on what the recipe
+	// actually computed rather than re-deriving it.
+	Answers answers.Answers
+
 	owner map[string]string // dest -> module name, for collision messages
 }
 
@@ -35,12 +43,18 @@ func (p Plan) Owner() map[string]string {
 // BuildPlan renders every module in order and merges the results, failing fast
 // on any cross-module destination collision.
 func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
-	// Templates are parsed with missingkey=error, so the archetype-derived keys
-	// must exist before any template runs. Deriving here covers every caller.
+	// Templates are parsed with missingkey=error, so the derived keys must exist
+	// before any template runs. Derive covers the answer-only keys; the emits
+	// union needs the module list, which only this function has.
 	a = answers.Derive(a)
+	checks, actions, needs := unionEmits(mods)
+	a["emitted_checks"], a["emitted_actions"], a["emitted_needs"] = checks, actions, needs
+	a["emitted_action_patterns"] = actionPatterns(actions)
+
 	p := Plan{
-		Files: map[string]string{},
-		owner: map[string]string{},
+		Files:   map[string]string{},
+		Answers: a,
+		owner:   map[string]string{},
 	}
 	for _, mf := range mods {
 		files, err := renderModule(mf.Manifest, mf.FS, a)
@@ -61,6 +75,60 @@ func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
 		}
 	}
 	return p, nil
+}
+
+// unionEmits collects every module's declared contract.
+//
+// Checks and actions are sorted, deduplicated lists because templates range
+// over them, and sorted so a recipe renders byte-identically whatever order its
+// modules resolve in -- the golden trees depend on that.
+//
+// Needs is a set rather than a list because templates ask about membership, and
+// keel registers no template functions: `index .emitted_needs "x"` is a builtin
+// and yields false for an absent key, where a list would need a `has` function
+// that does not exist.
+func unionEmits(mods []moduleFS) (checks, actions []string, needs map[string]bool) {
+	var c, ac []string
+	needs = map[string]bool{}
+	for _, mf := range mods {
+		c = append(c, mf.Manifest.Emits.Checks...)
+		ac = append(ac, mf.Manifest.Emits.Actions...)
+		for _, n := range mf.Manifest.Emits.Needs {
+			needs[n] = true
+		}
+	}
+	return sortedSet(c), sortedSet(ac), needs
+}
+
+// actionPatterns turns declared action names into host allow-list patterns.
+//
+// A normal action is versioned with "@", so "owner/repo" becomes
+// "owner/repo@*". A Docker action is not: it is referenced as
+// "docker://image:tag", so "@*" would be meaningless there and the reference is
+// left bare, which allows the image at any tag.
+//
+// Computed here rather than in the template because keel registers no template
+// functions, so a template cannot test for the prefix.
+func actionPatterns(actions []string) []string {
+	out := make([]string, 0, len(actions))
+	for _, a := range actions {
+		if strings.HasPrefix(a, "docker://") {
+			out = append(out, a)
+			continue
+		}
+		out = append(out, a+"@*")
+	}
+	return out
+}
+
+// sortedSet returns vals sorted with duplicates removed, never nil.
+func sortedSet(vals []string) []string {
+	slices.Sort(vals)
+	out := slices.Compact(vals)
+	if out == nil {
+		return []string{}
+	}
+	return out
 }
 
 // BuildRecipe resolves module names through the loader and builds the plan.

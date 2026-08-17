@@ -1,6 +1,6 @@
 name: security-go
 description: CodeQL, govulncheck, dependency-review, workflow linting
-version: 2.1.0
+version: 2.2.0
 language: go
 requires: [base-layout]
 questions:
@@ -18,3 +18,9 @@ files: # dest is always "." — src carries the subdir
   - src: ".github/codeql/codeql-config.yml.tmpl"
     dest: "."
     when: "{{ .enable_codeql }}"
+# codeql and govulncheck are answer-gated in the workflow; emits describes the
+# maximum this module can contribute, and repo-settings keeps the same gates on
+# the required-check list.
+emits:
+  checks: [dependency-review, actionlint, codeql, govulncheck]
+  actions: [docker://rhysd/actionlint]

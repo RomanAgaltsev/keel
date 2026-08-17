@@ -1,6 +1,6 @@
 name: security-rust
 description: cargo-audit + cargo-deny, dependency-review, workflow linting
-version: 1.2.0
+version: 1.3.0
 language: rust
 requires: [base-layout]
 questions:
@@ -26,3 +26,9 @@ files: # dest is always "." — src carries the subdir
     dest: "."
   - src: ".github/workflows/actionlint.yml"
     dest: "."
+# Rust keeps one workflow per concern, so its dependency-review job is named
+# `review` -- not `dependency-review` as in Go's consolidated security.yml.
+# audit and deny are answer-gated; emits is the maximum this module contributes.
+emits:
+  checks: [review, actionlint, audit, deny]
+  actions: [docker://rhysd/actionlint, rustsec/audit-check, EmbarkStudios/cargo-deny-action]

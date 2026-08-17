@@ -45,3 +45,21 @@ func TestTestRustWithCoverage(t *testing.T) {
 	// test fail on every legitimate bump.
 	require.Contains(t, cov, "codecov/codecov-action@")
 }
+
+// TestTestRustEmitsAStableCheckContext is the Rust half of #53: test.yml is
+// matrixed the same way, so the bare `test` context has no producer there
+// either.
+func TestTestRustEmitsAStableCheckContext(t *testing.T) {
+	l := module.NewFSLoader(keel.BuiltinFS)
+	plan, err := render.BuildRecipe(l, []string{"base-layout", "test-rust"}, answers.Answers{
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo",
+		"provider": "github", "enable_codecov": false,
+	})
+	require.NoError(t, err)
+	wf := plan.Files[".github/workflows/test.yml"]
+
+	require.Contains(t, wf, "test-matrix:")
+	require.Contains(t, wf, "needs: [test-matrix]")
+	require.Contains(t, wf, "if: always()")
+	require.Contains(t, wf, "exit 1")
+}

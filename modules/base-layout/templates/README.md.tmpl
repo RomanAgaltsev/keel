@@ -2,6 +2,14 @@
 {{ if eq .provider "github" }}
 [![lint](https://{{ .module_path }}/actions/workflows/lint.yml/badge.svg)](https://{{ .module_path }}/actions/workflows/lint.yml)
 [![test](https://{{ .module_path }}/actions/workflows/test.yml/badge.svg)](https://{{ .module_path }}/actions/workflows/test.yml)
+{{- /*
+  index rather than field access: base-layout ships in every recipe, including
+  ones without a test module, and missingkey=error would fail the whole render
+  on an absent key.
+*/}}
+{{- if index . "enable_codecov" }}
+[![codecov](https://codecov.io/gh/{{ .repo_slug }}/branch/main/graph/badge.svg)](https://codecov.io/gh/{{ .repo_slug }})
+{{- end }}
 {{ end }}
 {{ .description }}
 

@@ -10,6 +10,7 @@ type Manifest struct {
 	Requires    []string   `yaml:"requires"`
 	Questions   []Question `yaml:"questions"`
 	Files       []FileRule `yaml:"files"`
+	Emits       Emits      `yaml:"emits,omitempty"`
 }
 
 // Question is a single typed prompt contributed by a module.

@@ -56,3 +56,22 @@ func TestLintWorkflowDelegatesToTask(t *testing.T) {
 	require.Contains(t, wf, "actions/checkout@v7")
 	require.NotContains(t, wf, "v2.") // no golangci version pinned here — Taskfile owns it
 }
+
+// TestLintGoRunsOnWindowsBehindAGate is #56's second half. lint ran only on
+// ubuntu, which is why a CRLF working tree lint-failing on every Windows clone
+// was invisible to CI for every release. Matrixing it renames the check
+// context, so the gate job ships in the same change.
+func TestLintGoRunsOnWindowsBehindAGate(t *testing.T) {
+	l := module.NewFSLoader(keel.BuiltinFS)
+	plan, err := render.BuildRecipe(l, []string{"base-layout", "lint-go"}, answers.Answers{
+		"repo_name": "demo", "description": "d", "module_path": "github.com/acme/demo", "provider": "github",
+	})
+	require.NoError(t, err)
+	wf := plan.Files[".github/workflows/lint.yml"]
+
+	require.Contains(t, wf, "windows-latest", "lint must run on Windows or #56 stays invisible")
+	require.Contains(t, wf, "lint-matrix:")
+	require.Contains(t, wf, "needs: [lint-matrix]")
+	require.Contains(t, wf, "if: always()")
+	require.Contains(t, wf, "exit 1")
+}
