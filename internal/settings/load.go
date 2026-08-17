@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -69,6 +70,30 @@ func (d Desired) validateActions() error {
 	}
 	if v := d.Actions.DefaultWorkflowPermissions; v != nil && *v != "read" && *v != "write" {
 		return fmt.Errorf("actions.default_workflow_permissions %q: want \"read\" or \"write\"", *v)
+	}
+	return validatePatterns(d.Actions)
+}
+
+// validatePatterns checks the allow-list. It is meaningful only alongside
+// local_and_verified: "all" needs no list and "local_only" admits none, so a
+// pattern under either would be accepted here and silently discarded by the
+// host — the kind of quiet no-op this schema exists to prevent.
+func validatePatterns(a *Actions) error {
+	if len(a.AllowedPatterns) == 0 {
+		return nil
+	}
+	if a.Allowed == nil || *a.Allowed != AllowedLocalAndVerified {
+		return fmt.Errorf("actions.allowed_patterns requires actions.allowed: %s", AllowedLocalAndVerified)
+	}
+	seen := make(map[string]bool, len(a.AllowedPatterns))
+	for _, p := range a.AllowedPatterns {
+		if strings.TrimSpace(p) == "" {
+			return errors.New("actions.allowed_patterns: empty entry")
+		}
+		if seen[p] {
+			return fmt.Errorf("actions.allowed_patterns: duplicate entry %q", p)
+		}
+		seen[p] = true
 	}
 	return nil
 }

@@ -40,6 +40,15 @@ type Security struct {
 type Actions struct {
 	// Allowed is one of AllowedAll, AllowedLocalOnly, AllowedLocalAndVerified.
 	Allowed *string `yaml:"allowed,omitempty"`
+
+	// AllowedPatterns extends AllowedLocalAndVerified with named third-party
+	// actions: "GitHub-owned, verified, and also these". Each entry is a host
+	// allow-list pattern, e.g. "arduino/setup-task@*".
+	//
+	// It is legal only with AllowedLocalAndVerified. "all" needs no list and
+	// "local_only" admits none, so a pattern under either would be discarded
+	// without complaint.
+	AllowedPatterns []string `yaml:"allowed_patterns,omitempty"`
 	// DefaultWorkflowPermissions is "read" or "write".
 	DefaultWorkflowPermissions   *string `yaml:"default_workflow_permissions,omitempty"`
 	CanApprovePullRequestReviews *bool   `yaml:"can_approve_pull_request_reviews,omitempty"`

@@ -102,3 +102,59 @@ func TestLoadEmptyOptionalSections(t *testing.T) {
 	require.Nil(t, d.Actions)
 	require.Empty(t, d.Rulesets)
 }
+
+func TestActionsAllowedPatternsParseAndValidate(t *testing.T) {
+	d, err := settings.Load(write(t, `
+version: 1
+actions:
+  allowed: local_and_verified
+  allowed_patterns:
+    - arduino/setup-task@*
+    - crate-ci/typos@*
+`))
+	require.NoError(t, err)
+	require.Equal(t, []string{"arduino/setup-task@*", "crate-ci/typos@*"}, d.Actions.AllowedPatterns)
+}
+
+func TestActionsAllowedPatternsRejected(t *testing.T) {
+	cases := []struct {
+		name string
+		yaml string
+		want string
+	}{
+		{
+			// "all" and "local_only" have no pattern list on the host, so a
+			// pattern here would be silently discarded.
+			name: "patterns with allowed: all",
+			yaml: "version: 1\nactions:\n  allowed: all\n  allowed_patterns: [a/b@*]\n",
+			want: "allowed_patterns",
+		},
+		{
+			name: "patterns with allowed: local_only",
+			yaml: "version: 1\nactions:\n  allowed: local_only\n  allowed_patterns: [a/b@*]\n",
+			want: "allowed_patterns",
+		},
+		{
+			name: "patterns with no allowed at all",
+			yaml: "version: 1\nactions:\n  allowed_patterns: [a/b@*]\n",
+			want: "allowed_patterns",
+		},
+		{
+			name: "empty pattern",
+			yaml: "version: 1\nactions:\n  allowed: local_and_verified\n  allowed_patterns: [\"\"]\n",
+			want: "empty",
+		},
+		{
+			name: "duplicate pattern",
+			yaml: "version: 1\nactions:\n  allowed: local_and_verified\n  allowed_patterns: [a/b@*, a/b@*]\n",
+			want: "duplicate",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := settings.Load(write(t, tc.yaml))
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
