@@ -10,3 +10,6 @@ files: # dest is always "." — src carries the subdir
     dest: "."
   - src: ".github/workflows/lint.yml"
     dest: "."
+emits:
+  checks: [lint]
+  actions: [dtolnay/rust-toolchain]

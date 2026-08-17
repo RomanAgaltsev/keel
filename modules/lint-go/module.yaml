@@ -8,3 +8,6 @@ files:
     dest: "."
   - src: ".github/workflows/lint.yml"
     dest: "."
+emits:
+  checks: [lint]
+  actions: [arduino/setup-task]

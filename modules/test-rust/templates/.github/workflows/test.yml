@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 jobs:
-  test:
+  test-matrix:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -18,3 +18,19 @@ jobs:
           tool: nextest
       - run: cargo nextest run --all-features
       - run: cargo test --doc --all-features
+
+  # The required status check. The matrix above reports one context per OS
+  # (`test-matrix (ubuntu-latest)` and so on), so a ruleset requiring a bare
+  # `test` would wait on a producer that does not exist. This job is that
+  # producer, and its name does not change when the matrix does.
+  test:
+    if: always()
+    needs: [test-matrix]
+    runs-on: ubuntu-latest
+    steps:
+      # always() means this job runs even when the matrix failed, so it must
+      # fail explicitly. A skipped job reports a skipped check, which does not
+      # block a merge -- success by not running, which is the shape of defect
+      # this gate exists to prevent.
+      - if: needs.test-matrix.result != 'success'
+        run: exit 1

@@ -8,8 +8,15 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
+  # Windows is here because the formatters normalise to LF: without a
+  # .gitattributes forcing an LF checkout, a Windows clone reports every file as
+  # unformatted. Linting only on ubuntu hid that from CI entirely.
+  lint-matrix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -22,6 +29,23 @@ jobs:
       - run: task setup
       - run: task lint
       - name: tidy check
+        shell: bash
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
+
+  # The required status check. The matrix above reports one context per OS, so a
+  # ruleset requiring a bare `lint` would wait on a producer that does not
+  # exist. This job is that producer, and its name does not change when the
+  # matrix does.
+  lint:
+    if: always()
+    needs: [lint-matrix]
+    runs-on: ubuntu-latest
+    steps:
+      # always() means this job runs even when the matrix failed, so it must
+      # fail explicitly. A skipped job reports a skipped check, which does not
+      # block a merge -- success by not running, which is the shape of defect
+      # this gate exists to prevent.
+      - if: needs.lint-matrix.result != 'success'
+        run: exit 1

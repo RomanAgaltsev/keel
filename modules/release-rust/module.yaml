@@ -10,3 +10,12 @@ files: # dest is always "." — src carries the subdir
     dest: "."
   - src: ".github/workflows/pr-title.yml"
     dest: "."
+# pr-title.yml runs on pull_request and is a required check. release-plz.yml
+# runs on push to main and opens a release PR, hence the capability below.
+emits:
+  checks: [pr-title]
+  actions:
+    - amannn/action-semantic-pull-request
+    - dtolnay/rust-toolchain
+    - MarcoIeni/release-plz-action
+  needs: [can_approve_pull_request_reviews]

@@ -8,3 +8,6 @@ files: # dest is always "." — src carries the subdir (see Task 5 note)
     dest: "."
   - src: ".github/workflows/typos.yml"
     dest: "."
+emits:
+  checks: [typos]
+  actions: [crate-ci/typos]

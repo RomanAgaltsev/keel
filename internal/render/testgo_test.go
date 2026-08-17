@@ -43,3 +43,18 @@ func TestTestGoMatrixDoesNotFailFast(t *testing.T) {
 	require.Contains(t, wf, "${{ matrix.os }}")
 	require.Contains(t, wf, "actions/checkout@v7")
 }
+
+// TestTestGoEmitsAStableCheckContext guards #53. A matrixed job reports
+// `test (ubuntu-latest)` and never a bare `test`, so a ruleset requiring `test`
+// waits on a producer that does not exist and every PR sits BLOCKED with all
+// runs green.
+func TestTestGoEmitsAStableCheckContext(t *testing.T) {
+	wf := testGoPlan(t, false).Files[".github/workflows/test.yml"]
+
+	require.Contains(t, wf, "test-matrix:", "the matrixed job must be renamed")
+	require.Contains(t, wf, "needs: [test-matrix]", "the gate must depend on the matrix")
+	require.Contains(t, wf, "if: always()",
+		"without always() the gate is skipped when the matrix fails, and a skipped required check does not block")
+	require.Contains(t, wf, "exit 1",
+		"the gate must fail explicitly; reporting success by not running is the defect it prevents")
+}
