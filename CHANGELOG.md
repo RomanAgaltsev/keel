@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.2](https://github.com/RomanAgaltsev/keel/compare/v2.4.1...v2.4.2) (2026-08-17)
+
+
+### Bug Fixes
+
+* ship .gitattributes so Windows scaffolds do not lint red ([#58](https://github.com/RomanAgaltsev/keel/issues/58)) ([4104c47](https://github.com/RomanAgaltsev/keel/commit/4104c472daf41cd394334f48a41517b56e33ac43))
+
 ## [2.4.1](https://github.com/RomanAgaltsev/keel/compare/v2.4.0...v2.4.1) (2026-08-15)
 
 
