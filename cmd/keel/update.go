@@ -17,6 +17,7 @@ import (
 	"github.com/RomanAgaltsev/keel/v2/internal/answers"
 	"github.com/RomanAgaltsev/keel/v2/internal/git"
 	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 	"github.com/RomanAgaltsev/keel/v2/internal/module"
 	"github.com/RomanAgaltsev/keel/v2/internal/render"
 	"github.com/RomanAgaltsev/keel/v2/internal/update"
@@ -115,6 +116,7 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 		Owner:          plan.Owner(),
 		Original:       lockOriginals(lk),
 		HashOf:         diskHasher(f.path),
+		UserOwned:      plan.UserOwned(),
 	})
 	if err != nil {
 		return err
@@ -185,7 +187,7 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 	if err != nil {
 		return err
 	}
-	newLock := update.NewLock(lk, ms, plan.Files, plan.Owner(), version)
+	newLock := update.NewLock(lk, ms, plan.Files, plan.Owner(), plan.Deps(), version)
 	// Persist the answers actually rendered with — re-collected choices under
 	// --reconfigure, or stored answers with newly-added defaults filled — so the
 	// lock stays consistent with the hashes just recorded.
@@ -196,6 +198,10 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 	printAddedModules(out, ms, plan.Owner())
 	printApplied(out, applied)
 	reportRemoved(out, applied)
+	// lk is the lock as read at the start of the run, so this diffs against what
+	// the repo was scaffolded or last updated with — not against what was just
+	// written.
+	reportDeps(out, lk.Deps, plan.Deps())
 
 	switch {
 	case f.commit && len(applied.Conflicts) == 0:
@@ -396,4 +402,35 @@ func sorted(in []string) []string {
 	out := append([]string{}, in...)
 	sort.Strings(out)
 	return out
+}
+
+// reportDeps prints the dependencies the recipe now contributes that the repo's
+// go.mod may not have. go.mod is user-owned, so update never rewrites it once
+// the user has edited it; this is advice they run, in the same spirit as
+// reportRemoved's rm lines.
+func reportDeps(w io.Writer, old, updated []manifest.Dep) {
+	have := make(map[string]string, len(old))
+	for _, d := range old {
+		have[d.Path] = d.Version
+	}
+	var lines []string
+	for _, d := range updated {
+		if have[d.Path] == d.Version {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("    go get %s@%s", d.Path, d.Version))
+	}
+	if len(lines) == 0 {
+		return
+	}
+	sort.Strings(lines)
+	noun := "dependencies"
+	if len(lines) == 1 {
+		noun = "dependency"
+	}
+	fmt.Fprintf(w, "\nthis recipe contributes %d %s your go.mod may not have:\n\n", len(lines), noun)
+	for _, l := range lines {
+		fmt.Fprintln(w, l)
+	}
+	fmt.Fprint(w, "\nRun them, or `task deps:update`, to sync go.mod and go.sum.\n")
 }

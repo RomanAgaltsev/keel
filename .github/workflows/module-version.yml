@@ -16,3 +16,16 @@ jobs:
           go-version-file: go.mod
       - run: git fetch origin "${{ github.base_ref }}"
       - run: go run ./internal/tools/modulecheck "origin/${{ github.base_ref }}"
+
+  # module.yaml dep pins are not a manifest format dependabot understands, and
+  # ROADMAP §G records a renovate custom manager over modules/ that never ran
+  # once. This is the guard for them. It talks to proxy.golang.org, which is why
+  # it lives here rather than in `task ci`.
+  module-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go run ./internal/tools/depcheck

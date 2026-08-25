@@ -10,6 +10,7 @@ import (
 	"github.com/RomanAgaltsev/keel/v2/internal/answers"
 	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 	"github.com/RomanAgaltsev/keel/v2/internal/module"
+	"github.com/RomanAgaltsev/keel/v2/internal/modver"
 )
 
 // moduleFS pairs a resolved manifest with its template filesystem.
@@ -27,7 +28,8 @@ type Plan struct {
 	// actually computed rather than re-deriving it.
 	Answers answers.Answers
 
-	owner map[string]string // dest -> module name, for collision messages
+	owner     map[string]string // dest -> module name, for collision messages
+	userOwned map[string]bool   // dest -> content becomes the user's once edited
 }
 
 // Owner returns a copy of the dest → module-name map, so callers can group a
@@ -40,6 +42,27 @@ func (p Plan) Owner() map[string]string {
 	return out
 }
 
+// UserOwned returns a copy of the set of dests whose content becomes the user's
+// once they edit it. See manifest.FileRule.UserOwned.
+func (p Plan) UserOwned() map[string]bool {
+	out := make(map[string]bool, len(p.userOwned))
+	for dest, v := range p.userOwned {
+		out[dest] = v
+	}
+	return out
+}
+
+// Deps returns the recipe's Go dependency union, as rendered into go.mod. It
+// reads the derived answer rather than recomputing, so callers and templates
+// cannot disagree. Never nil.
+func (p Plan) Deps() []manifest.Dep {
+	deps, _ := p.Answers["go_deps"].([]manifest.Dep)
+	if deps == nil {
+		return []manifest.Dep{}
+	}
+	return deps
+}
+
 // BuildPlan renders every module in order and merges the results, failing fast
 // on any cross-module destination collision.
 func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
@@ -50,14 +73,16 @@ func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
 	checks, actions, needs := unionEmits(mods)
 	a["emitted_checks"], a["emitted_actions"], a["emitted_needs"] = checks, actions, needs
 	a["emitted_action_patterns"] = actionPatterns(actions)
+	a["go_deps"] = unionDeps(mods)
 
 	p := Plan{
-		Files:   map[string]string{},
-		Answers: a,
-		owner:   map[string]string{},
+		Files:     map[string]string{},
+		Answers:   a,
+		owner:     map[string]string{},
+		userOwned: map[string]bool{},
 	}
 	for _, mf := range mods {
-		files, err := renderModule(mf.Manifest, mf.FS, a)
+		files, modUserOwned, err := renderModule(mf.Manifest, mf.FS, a)
 		if err != nil {
 			return Plan{}, err
 		}
@@ -72,6 +97,9 @@ func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
 			}
 			p.owner[dest] = mf.Manifest.Name
 			p.Files[dest] = files[dest]
+			if modUserOwned[dest] {
+				p.userOwned[dest] = true
+			}
 		}
 	}
 	return p, nil
@@ -153,4 +181,43 @@ func BuildFromManifests(l module.Loader, manifests []manifest.Manifest, a answer
 		mods[i] = moduleFS{Manifest: m, FS: tfs}
 	}
 	return BuildPlan(mods, a)
+}
+
+// unionDeps collects every module's declared Go dependencies into one slice,
+// sorted by path so a recipe renders byte-identically whatever order its modules
+// resolve in -- the golden trees depend on that, exactly as unionEmits does.
+//
+// Two modules declaring the same path resolve to the higher version, matching
+// Go's minimal version selection. Erroring instead would make keel stricter than
+// the toolchain that resolves the file anyway: the scaffold's own `task ci` runs
+// `go mod tidy` first and reaches the same answer.
+func unionDeps(mods []moduleFS) []manifest.Dep {
+	highest := map[string]string{}
+	for _, mf := range mods {
+		for _, d := range mf.Manifest.Deps {
+			if cur, ok := highest[d.Path]; ok && !higherVersion(d.Version, cur) {
+				continue
+			}
+			highest[d.Path] = d.Version
+		}
+	}
+	paths := make([]string, 0, len(highest))
+	for p := range highest {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	out := make([]manifest.Dep, 0, len(paths))
+	for _, p := range paths {
+		out = append(out, manifest.Dep{Path: p, Version: highest[p]})
+	}
+	return out
+}
+
+// higherVersion reports whether a is a higher version than b. modver.Compare
+// parses bare semver, so the Go module `v` prefix is trimmed first. An
+// unparseable version cannot reach here -- ValidateDeps rejects it at load --
+// and if one somehow did, keeping the incumbent is the conservative answer.
+func higherVersion(a, b string) bool {
+	c, err := modver.Compare(strings.TrimPrefix(a, "v"), strings.TrimPrefix(b, "v"))
+	return err == nil && c > 0
 }

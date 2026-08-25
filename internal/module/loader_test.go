@@ -2,6 +2,7 @@ package module_test
 
 import (
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/require"
 
@@ -72,4 +73,15 @@ func TestRecipeQuestions(t *testing.T) {
 
 	_, err = module.RecipeQuestions(l, []string{"does-not-exist"})
 	require.Error(t, err)
+}
+
+func TestLoadRejectsAManifestWithABadContract(t *testing.T) {
+	fsys := fstest.MapFS{
+		"modules/broken/module.yaml": &fstest.MapFile{Data: []byte(
+			"name: broken\nlanguage: go\ndeps:\n  - path: golang.org/x/tools\n    version: 0.38.0\n",
+		)},
+	}
+	_, err := module.NewFSLoader(fsys).Load("broken")
+	require.Error(t, err, "a manifest with an invalid deps block must not load")
+	require.Contains(t, err.Error(), "v-prefixed semver")
 }

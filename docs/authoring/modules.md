@@ -44,6 +44,33 @@ files:
 | `requires` | Other modules this one depends on, so a recipe stays consistent (e.g. most modules `requires: [base-layout]`). |
 | `questions` | The module's own questions (see below). |
 | `files` | The render rules (see below). |
+| `deps` | Third-party Go modules your emitted code imports (see below). |
+
+## Dependencies
+
+If your module emits Go code that imports something outside the standard
+library, declare it. keel unions every module's `deps` across the recipe and the
+`go-mod` module renders the `require` block, so you never edit `go.mod`
+yourself — and two modules needing the same dependency don't collide.
+
+```yaml
+deps:
+  - path: golang.org/x/tools
+    version: v0.38.0
+```
+
+Three rules:
+
+- **Declare direct imports only.** The scaffolded repo runs `go mod tidy` as the
+  first step of its own `task ci`, which resolves the indirect closure and
+  writes `go.sum`.
+- **Versions are `v`-prefixed semver.** `v0.38.0`, not `0.38.0`. Put the version
+  in `version`, never as `path@version`.
+- **Go modules only.** Declaring `deps` on an `any` or `rust` module is an
+  error. Cargo support is unbuilt until a Rust module needs it.
+
+If two modules in a recipe declare the same path at different versions, the
+higher one wins — the same rule Go's own minimal version selection applies.
 
 ## Questions
 
@@ -67,6 +94,19 @@ Each `files` entry maps templates into the rendered repo:
 | `src` | A glob relative to the module's `templates/` directory. |
 | `dest` | Destination directory in the rendered repo (`.` is the repo root). |
 | `when` | Optional `text/template` condition; the file is rendered only when it evaluates truthy. |
+| `user_owned` | The file's content becomes the user's once they edit it. |
+
+Mark a file `user_owned: true` when the user is expected to add to it after
+scaffolding. `go.mod` is the case that motivated it: their first `go get` adds
+a `require` line keel did not write, so an update that dropped a `.keel-new`
+sidecar containing keel's `require` block — without their dependencies — would
+be worse than doing nothing.
+
+The rule is deliberately narrow. While the file is **untouched** it updates
+like any other, so keel keeps the parts it owns current — `keel update
+--reconfigure` still rewrites `go.mod`'s module path. Once the user has
+**edited** it, keel skips it silently: no conflict and no sidecar. Either way
+it is never deleted if its module leaves the recipe.
 
 A file whose name ends in **`.tmpl`** is rendered as a Go `text/template` (the
 `.tmpl` suffix is stripped from the output name). Any other file is **copied

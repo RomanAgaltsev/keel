@@ -22,6 +22,6 @@ func TestSafeDest(t *testing.T) {
 func TestRenderModuleRejectsEscapingDest(t *testing.T) {
 	tfs := fstest.MapFS{"x.tmpl": {Data: []byte("y")}}
 	m := manifest.Manifest{Name: "evil", Files: []manifest.FileRule{{Src: "*", Dest: "../out"}}}
-	_, err := renderModule(m, tfs, answers.Answers{})
+	_, _, err := renderModule(m, tfs, answers.Answers{})
 	require.ErrorContains(t, err, "unsafe destination")
 }

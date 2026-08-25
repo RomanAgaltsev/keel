@@ -30,6 +30,11 @@ tasks:
     cmds:
       - go run ./internal/tools/modulecheck origin/main
 
+  deps:check:
+    desc: fail if a module.yaml dep pin trails the Go proxy (needs network)
+    cmds:
+      - go run ./internal/tools/depcheck
+
   modules:bump:
     desc: patch-bump every changed module missing a version bump
     cmds:

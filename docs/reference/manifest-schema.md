@@ -17,6 +17,29 @@ gentler, example-driven walkthrough see
 | `questions` | question[] | no | The module's questions. |
 | `files` | file[] | no | The render rules. |
 | `emits` | emits | no | What this module contributes to the repository's CI contract. |
+| `deps` | dep[] | no | Third-party Go modules this module's emitted code imports. |
+
+### `deps[]`
+
+The direct third-party imports of the code this module emits. keel takes the
+union across the recipe and `go-mod` renders the `require` block, so the module
+that needs a dependency stays decoupled from the module that owns `go.mod`.
+
+| Field | Type | Required | Meaning |
+|-------|------|----------|---------|
+| `path` | string | yes | Module path, e.g. `golang.org/x/tools`. No `@version` — that goes in `version`. |
+| `version` | string (semver) | yes | `v`-prefixed, e.g. `v0.38.0`. |
+
+Rules:
+
+- **Direct imports only.** `go mod tidy` — which a scaffolded repo runs as the
+  first step of its own `task ci` — computes the indirect closure and writes
+  `go.sum`.
+- **Go modules only.** A `deps` block on a module whose `language` is not `go`
+  is an error, not a silent no-op. Cargo support is unbuilt because no Rust
+  consumer exists yet.
+- **Two modules may declare the same path.** The higher version wins, matching
+  Go's minimal version selection.
 
 ### `emits`
 
@@ -83,6 +106,22 @@ that action.
 | `src` | string (glob) | yes | Glob relative to the module's `templates/` dir. |
 | `dest` | string | yes | Destination directory in the rendered repo (`.` = root). |
 | `when` | string (`text/template`) | no | Condition; the file renders only when it evaluates truthy. |
+| `user_owned` | bool | no | The file's content becomes the user's once they edit it. |
+
+A `user_owned` file behaves in three ways:
+
+- **Untouched** — it updates normally (`Clean`), so keel keeps actualizing what
+  it owns. This is what lets `keel update --reconfigure` still rewrite
+  `go.mod`'s module path.
+- **Edited** — it is skipped silently. No `Conflict`, and crucially no
+  `.keel-new` sidecar, which would carry keel's render *without* the user's
+  additions and be dangerous to act on.
+- **Retracted** — never. If its module leaves the recipe, the file stays.
+
+It remains *recorded* in the lockfile, so its baseline is still available.
+
+`go.mod` is the motivating case: the first `go get` adds a `require` line keel
+did not write, but the `module` line stays keel's to actualize.
 
 Files ending in `.tmpl` are rendered as Go `text/template` (suffix stripped);
 all others are copied verbatim. Rendering uses `missingkey=error`.

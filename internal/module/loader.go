@@ -39,6 +39,9 @@ func (l *FSLoader) Load(name string) (manifest.Manifest, error) {
 	if err := yaml.Unmarshal(b, &m); err != nil {
 		return m, fmt.Errorf("parse module %q: %w", name, err)
 	}
+	if err := m.Validate(); err != nil {
+		return m, fmt.Errorf("load module %q: %w", name, err)
+	}
 	return m, nil
 }
 

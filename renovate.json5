@@ -2,6 +2,13 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended"],
   schedule: ["before 6am on monday"],
+  // NOT handled here: the `deps:` pins in modules/*/module.yaml. No bot parses
+  // that shape, and ROADMAP §G records a customManager over modules/ that never
+  // ran once and went unnoticed for months. They are guarded instead by keel's
+  // own `module-deps` CI job (internal/tools/depcheck), which resolves each pin
+  // against proxy.golang.org. Do not add a manager for them here without first
+  // proving it fires.
+  //
   // Also scan the embedded template workflows for action/docker bumps — the
   // default github-actions manager only looks at the real .github/workflows.
   "github-actions": {

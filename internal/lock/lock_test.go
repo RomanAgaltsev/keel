@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
 func TestWriteThenRead(t *testing.T) {
@@ -67,4 +68,27 @@ func TestHashBytesStable(t *testing.T) {
 	require.Equal(t, lock.HashBytes([]byte("hello")), lock.HashBytes([]byte("hello")))
 	require.NotEqual(t, lock.HashBytes([]byte("a")), lock.HashBytes([]byte("b")))
 	require.Len(t, lock.HashBytes([]byte("x")), 64) // hex sha256
+}
+
+func TestLockRoundTripsDeps(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".scaffold.lock")
+	want := []manifest.Dep{{Path: "golang.org/x/tools", Version: "v0.38.0"}}
+	require.NoError(t, lock.Write(path, lock.Lock{Recipe: "go-analyzer", Deps: want}))
+
+	got, err := lock.Read(path)
+	require.NoError(t, err)
+	require.Equal(t, want, got.Deps)
+}
+
+func TestLockWithoutDepsReadsAsEmpty(t *testing.T) {
+	// A lock written before this feature has no deps key. It must read as an
+	// empty union rather than failing to unmarshal -- which makes every dep
+	// report as new, and `go get` at a version already present is a no-op.
+	path := filepath.Join(t.TempDir(), ".scaffold.lock")
+	require.NoError(t, os.WriteFile(path,
+		[]byte("lock_version: 2\nrecipe: go-service\nmodules: []\nanswers: {}\n"), 0o600))
+
+	got, err := lock.Read(path)
+	require.NoError(t, err)
+	require.Empty(t, got.Deps)
 }

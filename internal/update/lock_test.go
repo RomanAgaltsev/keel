@@ -27,7 +27,7 @@ func TestNewLockRefreshesOnlyNamedModules(t *testing.T) {
 		RecipeOrder: []string{"lint", "base"},
 	}
 
-	got := update.NewLock(old, ms, renderContent, owner, "1.6.0")
+	got := update.NewLock(old, ms, renderContent, owner, nil, "1.6.0")
 
 	require.Equal(t, "1.6.0", got.KeelVersion)
 	require.Equal(t, "go-service", got.Recipe)
@@ -58,6 +58,7 @@ func TestNewLockAppendsAddedModules(t *testing.T) {
 	got := update.NewLock(old, ms,
 		map[string]string{"LICENSE": "MIT License\n"},
 		map[string]string{"LICENSE": "license"},
+		nil,
 		"2.1.0")
 
 	require.Len(t, got.Modules, 2)
@@ -79,7 +80,7 @@ func TestNewLockDropsOrphanedModules(t *testing.T) {
 		State:       map[string]update.State{"base-layout": update.Unchanged, "spell": update.Orphaned},
 		RecipeOrder: []string{"base-layout"},
 	}
-	got := update.NewLock(old, ms, map[string]string{}, map[string]string{}, "2.1.0")
+	got := update.NewLock(old, ms, map[string]string{}, map[string]string{}, nil, "2.1.0")
 
 	require.Len(t, got.Modules, 1)
 	require.Equal(t, "base-layout", got.Modules[0].Name)
@@ -88,6 +89,6 @@ func TestNewLockDropsOrphanedModules(t *testing.T) {
 func TestNewLockPreservesRecipeSource(t *testing.T) {
 	old := lock.Lock{Recipe: "my-recipe", RecipeSource: "./my-recipe.yaml"}
 	got := update.NewLock(old, update.ModuleSet{State: map[string]update.State{}},
-		map[string]string{}, map[string]string{}, "2.1.0")
+		map[string]string{}, map[string]string{}, nil, "2.1.0")
 	require.Equal(t, "./my-recipe.yaml", got.RecipeSource)
 }

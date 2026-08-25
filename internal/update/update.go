@@ -64,6 +64,14 @@ type Input struct {
 	Original map[string]map[string]string
 	// HashOf returns the sha256 of the on-disk file, whether it exists, or an error.
 	HashOf func(path string) (sha string, exists bool, err error)
+	// UserOwned marks dests whose content becomes the user's once they edit it.
+	// While untouched they update normally, so keel keeps actualizing the parts
+	// it owns. Once edited they are skipped silently rather than classified
+	// Conflict: the .keel-new sidecar would hold keel's render without the
+	// user's additions, and acting on it would lose them. They are never
+	// retracted, and stay recorded in the lock so a future append-merge can
+	// reconstruct a baseline.
+	UserOwned map[string]bool
 }
 
 // Classify produces the update Plan. See the Class docs for each rule.
@@ -75,22 +83,46 @@ func Classify(in Input) (Plan, error) {
 		if err != nil {
 			return Plan{}, err
 		}
-		if ok {
-			changes = append(changes, change)
+		if !ok {
+			continue
 		}
+		// A user-owned file the user has actually edited is dropped rather than
+		// conflicted: a .keel-new beside it would carry keel's render without
+		// their additions, and is dangerous to act on. Untouched, it is Clean
+		// and updates like any other file.
+		if in.UserOwned[dest] && change.Class == Conflict {
+			continue
+		}
+		changes = append(changes, change)
 	}
 
-	// Retractions: recorded for a candidate or orphaned module, absent from the
-	// new render. A v1 lock records no files, so it can report none of these —
-	// pre-existing and unchanged.
+	retracted, err := classifyRetractions(in)
+	if err != nil {
+		return Plan{}, err
+	}
+	changes = append(changes, retracted...)
+
+	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
+	return Plan{Changes: changes}, nil
+}
+
+// classifyRetractions finds files recorded for a candidate or orphaned module
+// that the new render no longer produces. A v1 lock records no files, so it can
+// report none of these — pre-existing and unchanged. A user-owned file is never
+// retracted: deleting a repository's go.mod is not a scaffolding decision.
+func classifyRetractions(in Input) ([]FileChange, error) {
+	var changes []FileChange
 	for mod := range retractable(in) {
 		for path, origHash := range in.Original[mod] {
+			if in.UserOwned[path] {
+				continue
+			}
 			if _, rendered := in.Render[path]; rendered {
 				continue
 			}
 			onHash, exists, err := in.HashOf(path)
 			if err != nil {
-				return Plan{}, err
+				return nil, err
 			}
 			if !exists {
 				continue // the user already deleted it
@@ -102,9 +134,7 @@ func Classify(in Input) (Plan, error) {
 			changes = append(changes, FileChange{Path: path, Class: class})
 		}
 	}
-
-	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
-	return Plan{Changes: changes}, nil
+	return changes, nil
 }
 
 // retractable returns the modules whose recorded files may be retracted: the

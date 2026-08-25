@@ -310,6 +310,7 @@ func writeLock(opts Options, manifests []manifest.Manifest, plan render.Plan) er
 		Recipe:       opts.Recipe,
 		RecipeSource: opts.RecipeSource,
 		Modules:      lmods,
+		Deps:         plan.Deps(),
 		Answers:      opts.Answers,
 	})
 }

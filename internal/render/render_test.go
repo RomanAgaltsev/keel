@@ -21,7 +21,7 @@ func TestRenderModule(t *testing.T) {
 	}
 	a := answers.Answers{"repo_name": "foo"}
 
-	files, err := renderModule(m, tfs, a)
+	files, _, err := renderModule(m, tfs, a)
 	require.NoError(t, err)
 	require.Equal(t, "# foo\n", files["README.md"])
 	require.Equal(t, "foo", files["name.txt"])
@@ -33,7 +33,7 @@ func TestRenderModuleWhenFalseSkips(t *testing.T) {
 		Name:  "demo",
 		Files: []manifest.FileRule{{Src: "*", Dest: ".", When: "{{ .on }}"}},
 	}
-	files, err := renderModule(m, tfs, answers.Answers{"on": false})
+	files, _, err := renderModule(m, tfs, answers.Answers{"on": false})
 	require.NoError(t, err)
 	require.Empty(t, files)
 }
@@ -44,7 +44,7 @@ func TestRenderModuleVerbatimNonTmpl(t *testing.T) {
 		"README.md.tmpl": {Data: []byte("# {{ .repo_name }}\n")},                 // must be templated
 	}
 	m := manifest.Manifest{Name: "demo", Files: []manifest.FileRule{{Src: "*", Dest: "."}}}
-	files, err := renderModule(m, tfs, answers.Answers{"repo_name": "foo"})
+	files, _, err := renderModule(m, tfs, answers.Answers{"repo_name": "foo"})
 	require.NoError(t, err)
 	require.Equal(t, "token: ${{ secrets.GITHUB_TOKEN }}\n", files["ci.yml"]) // unchanged
 	require.Equal(t, "# foo\n", files["README.md"])
@@ -53,6 +53,6 @@ func TestRenderModuleVerbatimNonTmpl(t *testing.T) {
 func TestRenderModuleMissingLiteralSrcErrors(t *testing.T) {
 	tfs := fstest.MapFS{"present.yml": {Data: []byte("ok")}}
 	m := manifest.Manifest{Name: "demo", Files: []manifest.FileRule{{Src: "absent.yml", Dest: "."}}}
-	_, err := renderModule(m, tfs, answers.Answers{})
+	_, _, err := renderModule(m, tfs, answers.Answers{})
 	require.ErrorContains(t, err, "absent.yml") // a non-glob src that matches nothing is an authoring bug
 }

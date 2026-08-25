@@ -14,6 +14,7 @@ import (
 	"github.com/RomanAgaltsev/keel/v2"
 	"github.com/RomanAgaltsev/keel/v2/internal/answers"
 	"github.com/RomanAgaltsev/keel/v2/internal/lock"
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 	"github.com/RomanAgaltsev/keel/v2/internal/modver"
 	"github.com/RomanAgaltsev/keel/v2/internal/recipe"
 	"github.com/RomanAgaltsev/keel/v2/internal/update"
@@ -381,4 +382,37 @@ func TestReportRemovedReportsKeptOnly(t *testing.T) {
 	out := buf.String()
 	require.Contains(t, out, "rm .github/workflows/govulncheck.yml")
 	require.NotContains(t, out, "codeql.yml", "deleted files need no instructions")
+}
+
+func TestReportDepsListsAddedAndBumped(t *testing.T) {
+	var buf bytes.Buffer
+	old := []manifest.Dep{
+		{Path: "github.com/spf13/cobra", Version: "v1.10.0"},
+		{Path: "gopkg.in/yaml.v3", Version: "v3.0.1"},
+	}
+	updated := []manifest.Dep{
+		{Path: "github.com/spf13/cobra", Version: "v1.10.2"}, // bumped
+		{Path: "golang.org/x/tools", Version: "v0.38.0"},     // added
+		{Path: "gopkg.in/yaml.v3", Version: "v3.0.1"},        // unchanged
+	}
+	reportDeps(&buf, old, updated)
+
+	out := buf.String()
+	require.Contains(t, out, "go get github.com/spf13/cobra@v1.10.2")
+	require.Contains(t, out, "go get golang.org/x/tools@v0.38.0")
+	require.NotContains(t, out, "yaml.v3", "an unchanged dep is not news")
+	require.Contains(t, out, "2 dependencies")
+}
+
+func TestReportDepsSaysNothingWhenNothingChanged(t *testing.T) {
+	var buf bytes.Buffer
+	deps := []manifest.Dep{{Path: "golang.org/x/tools", Version: "v0.38.0"}}
+	reportDeps(&buf, deps, deps)
+	require.Empty(t, buf.String())
+}
+
+func TestReportDepsUsesTheSingularForOne(t *testing.T) {
+	var buf bytes.Buffer
+	reportDeps(&buf, nil, []manifest.Dep{{Path: "golang.org/x/tools", Version: "v0.38.0"}})
+	require.Contains(t, buf.String(), "1 dependency ")
 }
