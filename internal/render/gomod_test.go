@@ -51,3 +51,36 @@ func TestGoModRendersDeclaredDeps(t *testing.T) {
 		strings.Index(gomod, "github.com/spf13/cobra"),
 		strings.Index(gomod, "golang.org/x/tools"))
 }
+
+func TestGoModEmitsNoEntrypointForACLIArchetype(t *testing.T) {
+	// cli-go and analyzer-go each own cmd/<name>/main.go with their own content.
+	// BuildPlan errors on destination collisions, so go-mod must stand aside.
+	l := module.NewFSLoader(keel.BuiltinFS)
+	gomod, err := l.Load("go-mod")
+	require.NoError(t, err)
+
+	p, err := render.BuildFromManifests(l, []manifest.Manifest{gomod}, answers.Answers{
+		"repo_name":   "demo",
+		"module_path": "github.com/RomanAgaltsev/demo",
+		"archetype":   "cli",
+	})
+	require.NoError(t, err)
+	for dest := range p.Files {
+		require.NotContains(t, dest, "cmd/", "go-mod must emit no entrypoint for a cli archetype")
+	}
+	require.Contains(t, p.Files, "go.mod", "but it still owns go.mod")
+}
+
+func TestGoModStillEmitsAnEntrypointForAService(t *testing.T) {
+	l := module.NewFSLoader(keel.BuiltinFS)
+	gomod, err := l.Load("go-mod")
+	require.NoError(t, err)
+
+	p, err := render.BuildFromManifests(l, []manifest.Manifest{gomod}, answers.Answers{
+		"repo_name":   "demo",
+		"module_path": "github.com/RomanAgaltsev/demo",
+		"archetype":   "service",
+	})
+	require.NoError(t, err)
+	require.Contains(t, p.Files, "cmd/demo/main.go")
+}

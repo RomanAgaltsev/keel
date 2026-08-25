@@ -1,6 +1,6 @@
 name: go-mod
 description: Go module with a cmd/<name> entrypoint (service, cli) or a root package (library)
-version: 2.2.0
+version: 2.3.0
 language: go
 requires: [base-layout]
 files: # dest is always "." — src carries the subdir
@@ -12,7 +12,10 @@ files: # dest is always "." — src carries the subdir
     user_owned: true
   - src: "cmd/{{.repo_name}}/main.go.tmpl"
     dest: "."
-    when: '{{ not .is_library }}'
+    # Only the service archetype gets this stub entrypoint. cli-go and
+    # analyzer-go own cmd/<name>/main.go with their own content, and BuildPlan
+    # fails fast on destination collisions.
+    when: '{{ eq .archetype "service" }}'
   - src: "doc.go.tmpl"
     dest: "."
     when: '{{ .is_library }}'
