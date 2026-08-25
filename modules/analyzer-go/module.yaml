@@ -1,0 +1,21 @@
+name: analyzer-go
+description: go/analysis skeleton with an analysistest corpus
+version: 1.0.0
+language: go
+requires: [base-layout, go-mod]
+deps:
+  - path: golang.org/x/tools
+    version: v0.49.0
+files:
+  # Gated on the archetype this module belongs to. go-mod owns
+  # cmd/<name>/main.go for `service`, so without the gate a standalone render --
+  # which defaults the archetype to service -- is a destination collision.
+  - src: "cmd/{{.repo_name}}/main.go.tmpl"
+    dest: "."
+    when: '{{ eq .archetype "cli" }}'
+  - src: "analyzer/{{.package_name}}/*.tmpl"
+    dest: "."
+    when: '{{ eq .archetype "cli" }}'
+  - src: "analyzer/{{.package_name}}/testdata/src/a/*.tmpl"
+    dest: "."
+    when: '{{ eq .archetype "cli" }}'

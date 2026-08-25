@@ -1,0 +1,21 @@
+name: go-analyzer
+language: go
+archetype: cli
+modules:
+  [
+    base-layout,
+    go-mod,
+    analyzer-go,
+    taskfile-go,
+    lint-go,
+    test-go,
+    security-go,
+    dep-bots-go,
+    release-go,
+    spell,
+    license,
+    governance,
+    contributing-go,
+    community-templates,
+    repo-settings-go,
+  ]

@@ -23,6 +23,7 @@ func TestLoaderLoadModule(t *testing.T) {
 		"base-layout",
 		"go-mod",
 		"cli-go",
+		"analyzer-go",
 		"taskfile-go",
 		"lint-go",
 		"test-go",

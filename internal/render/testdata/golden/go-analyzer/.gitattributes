@@ -1,0 +1,15 @@
+# Normalise every text file to LF in the repository and on checkout.
+#
+# Without this, a clone on Windows under core.autocrlf=true produces a CRLF
+# working tree. Go's formatters (gofumpt, gci) emit LF, so every file reads as
+# unformatted and the linter fails on a repository nobody has edited.
+* text=auto eol=lf
+
+# Binaries must never be touched.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
