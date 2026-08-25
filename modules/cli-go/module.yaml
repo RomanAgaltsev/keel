@@ -1,0 +1,19 @@
+name: cli-go
+description: cobra command tree with a version subcommand
+version: 1.0.0
+language: go
+requires: [base-layout, go-mod]
+deps:
+  - path: github.com/spf13/cobra
+    version: v1.10.2
+files:
+  # Both rules are gated on the archetype this module belongs to. go-mod owns
+  # cmd/<name>/main.go for `service`, so without the gate a recipe that pairs
+  # them -- or a standalone render, which defaults the archetype to service --
+  # is a destination collision.
+  - src: "cmd/{{.repo_name}}/main.go.tmpl"
+    dest: "."
+    when: '{{ eq .archetype "cli" }}'
+  - src: "internal/cli/*.tmpl"
+    dest: "."
+    when: '{{ eq .archetype "cli" }}'

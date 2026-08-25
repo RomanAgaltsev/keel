@@ -9,7 +9,8 @@ built-in recipes.
 |--------|------|-------------|
 | `base-layout` | any | README and `.gitignore` common to every repo |
 | `spell` | any | Spell-check with crate-ci/typos |
-| `go-mod` | go | Go module and `cmd/<name>` entrypoint |
+| `go-mod` | go | Go module and `cmd/<name>` entrypoint (service archetype only) |
+| `cli-go` | go | cobra command tree with a version subcommand (cli archetype) |
 | `cargo-mod` | rust | Minimal Rust crate (`Cargo.toml` + entrypoint) |
 | `taskfile-go` / `taskfile-rust` | go / rust | Taskfile with project-local `bin/` tooling and a CI gate |
 | `lint-go` | go | golangci-lint v2 config + lint workflow |

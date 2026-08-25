@@ -22,6 +22,7 @@ func TestLoaderLoadModule(t *testing.T) {
 	require.ElementsMatch(t, []string{
 		"base-layout",
 		"go-mod",
+		"cli-go",
 		"taskfile-go",
 		"lint-go",
 		"test-go",

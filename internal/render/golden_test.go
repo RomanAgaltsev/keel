@@ -40,6 +40,10 @@ func goldenAnswers(recipeName string) answers.Answers {
 	case "go-service":
 		a["enable_codeql"] = true
 		a["enable_govulncheck"] = true
+	case "go-cli":
+		a["description"] = "a demo CLI"
+		a["enable_codeql"] = true
+		a["enable_govulncheck"] = true
 	case "go-library":
 		a["description"] = "a demo library"
 		a["enable_codeql"] = true
@@ -125,4 +129,8 @@ func keys(m map[string]string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func TestGoCLIGolden(t *testing.T) {
+	assertGolden(t, planForRecipe(t, "go-cli"), "go-cli")
 }

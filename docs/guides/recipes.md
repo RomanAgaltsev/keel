@@ -13,6 +13,7 @@ questions, and renders the result.
 |--------|----------|---------|
 | `go-service` | go | `base-layout`, `go-mod`, `taskfile-go`, `lint-go`, `test-go`, `security-go`, `dep-bots-go`, `release-go`, `spell`, `license`, `governance`, `contributing-go`, `community-templates` |
 | `go-library` | go | same module list as `go-service`, with `archetype: library` — no `cmd/`, no GoReleaser, no `task build` |
+| `go-cli` | go | `go-service`'s list plus `cli-go`, with `archetype: cli` — a cobra root command, a `version` subcommand wired to the release ldflags, and a command test |
 | `rust-service` | rust | `base-layout`, `cargo-mod`, `taskfile-rust`, `lint-rust`, `test-rust`, `security-rust`, `release-rust`, `dep-bots-rust`, `spell`, `license`, `governance`, `contributing-rust`, `community-templates` |
 
 `go-service` is the default — `keel new` with no `--recipe` uses it. They share

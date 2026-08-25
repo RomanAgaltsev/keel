@@ -20,7 +20,7 @@ func recipePlan(t *testing.T, name string) render.Plan {
 }
 
 func TestNoStaleActionPins(t *testing.T) {
-	for _, rec := range []string{"go-service", "rust-service", "go-library"} {
+	for _, rec := range []string{"go-service", "rust-service", "go-library", "go-cli"} {
 		plan := recipePlan(t, rec)
 		for path, content := range plan.Files {
 			if !strings.HasPrefix(path, ".github/workflows/") {
@@ -37,7 +37,7 @@ func TestWorkflowsDoNotPinToolVersions(t *testing.T) {
 	// The Taskfile owns tool versions. A workflow that pins golangci-lint too
 	// is a second source of truth, and the two drifted by nine minor versions
 	// before this test existed.
-	for _, rec := range []string{"go-service", "rust-service", "go-library"} {
+	for _, rec := range []string{"go-service", "rust-service", "go-library", "go-cli"} {
 		plan := recipePlan(t, rec)
 		for path, content := range plan.Files {
 			if !strings.HasPrefix(path, ".github/workflows/") {
@@ -68,7 +68,7 @@ func TestTaskfileAndLintAgreeOnGolangciVersion(t *testing.T) {
 func TestTemplatePinsMatchKeelsOwnWorkflows(t *testing.T) {
 	own := actionPins(t, ownWorkflowSources(t))
 
-	for _, rec := range []string{"go-service", "rust-service", "go-library"} {
+	for _, rec := range []string{"go-service", "rust-service", "go-library", "go-cli"} {
 		rendered := map[string]string{}
 		for path, content := range recipePlan(t, rec).Files {
 			if strings.HasPrefix(path, ".github/workflows/") {
