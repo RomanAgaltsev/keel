@@ -109,3 +109,14 @@ func TestTaskfileGoExposesKeelSettingsCheck(t *testing.T) {
 	require.Contains(t, got, "keel settings apply --check")
 	require.NotContains(t, taskBlock(t, got, "ci"), "keel")
 }
+
+func TestTaskfileFormatSkipsTestdata(t *testing.T) {
+	// analysistest fixtures live under analyzer/<pkg>/testdata/src/, are matched
+	// by line, and are frequently non-canonical on purpose. Formatting them
+	// silently breaks the corpus, so both find invocations must exclude them.
+	tf := taskfileGo(t)
+	require.Equal(t, 2, strings.Count(tf, "-not -path '*/testdata/*'"),
+		"both the gofumpt and gci find invocations must skip testdata")
+	// The glob must not be root-anchored: the corpus lives several levels down.
+	require.NotContains(t, tf, "-not -path './testdata/*'")
+}
