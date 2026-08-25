@@ -52,6 +52,17 @@ func (p Plan) UserOwned() map[string]bool {
 	return out
 }
 
+// Deps returns the recipe's Go dependency union, as rendered into go.mod. It
+// reads the derived answer rather than recomputing, so callers and templates
+// cannot disagree. Never nil.
+func (p Plan) Deps() []manifest.Dep {
+	deps, _ := p.Answers["go_deps"].([]manifest.Dep)
+	if deps == nil {
+		return []manifest.Dep{}
+	}
+	return deps
+}
+
 // BuildPlan renders every module in order and merges the results, failing fast
 // on any cross-module destination collision.
 func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {

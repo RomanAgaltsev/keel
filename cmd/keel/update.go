@@ -186,7 +186,7 @@ func applyUpdate(cmd *cobra.Command, f *updateFlags, lockPath string, lk lock.Lo
 	if err != nil {
 		return err
 	}
-	newLock := update.NewLock(lk, ms, plan.Files, plan.Owner(), version)
+	newLock := update.NewLock(lk, ms, plan.Files, plan.Owner(), plan.Deps(), version)
 	// Persist the answers actually rendered with — re-collected choices under
 	// --reconfigure, or stored answers with newly-added defaults filled — so the
 	// lock stays consistent with the hashes just recorded.

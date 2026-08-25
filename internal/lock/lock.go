@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
 // currentLockVersion is the schema version Write stamps. v2 added per-file hashes.
@@ -37,9 +39,15 @@ type Lock struct {
 	// scaffold time. Empty for a builtin recipe. Additive and optional on
 	// purpose: every existing v2 lock stays readable, and an older keel ignores
 	// the key rather than failing to unmarshal a retyped `recipe`.
-	RecipeSource string         `yaml:"recipe_source,omitempty"`
-	Modules      []Module       `yaml:"modules"`
-	Answers      map[string]any `yaml:"answers"`
+	RecipeSource string   `yaml:"recipe_source,omitempty"`
+	Modules      []Module `yaml:"modules"`
+	// Deps is the union of the Go dependencies the recipe's modules declared when
+	// this lock was written. Additive and optional: a lock written before the
+	// feature simply lacks the key and reads as an empty union, so no lock
+	// version bump is needed. Update diffs against it to report newly
+	// contributed dependencies.
+	Deps    []manifest.Dep `yaml:"deps,omitempty"`
+	Answers map[string]any `yaml:"answers"`
 }
 
 // HashBytes returns the hex sha256 of b, used for the lock's per-file hashes.
