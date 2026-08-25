@@ -94,3 +94,75 @@ jobs:
           if grep -q goreleaser .github/workflows/release.yml; then
             echo "release.yml still has a goreleaser job"; exit 1
           fi
+
+  scaffold-cli:
+    name: scaffold a go-cli repo and run its gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: go.mod }
+      - uses: arduino/setup-task@v3
+        with: { version: 3.x, repo-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: task build
+      - run: ./bin/keel new --no-input --recipe go-cli --answers testdata/meta/answers-cli.yaml --target /tmp/metacli
+      - name: Run the scaffolded CLI's own gate
+        working-directory: /tmp/metacli
+        run: |
+          go mod tidy
+          task setup
+          task ci
+      - name: The built binary must report its version
+        working-directory: /tmp/metacli
+        run: |
+          set -e
+          task build
+          ./bin/metacli version
+
+  scaffold-analyzer:
+    name: scaffold a go-analyzer repo and run its gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: go.mod }
+      - uses: arduino/setup-task@v3
+        with: { version: 3.x, repo-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: task build
+      - run: ./bin/keel new --no-input --recipe go-analyzer --answers testdata/meta/answers-analyzer.yaml --target /tmp/metaanalyzer
+      # `task ci` runs `go mod tidy` first, so a green gate proves x/tools
+      # survives tidy, go.sum materialises, and analysistest runs against the
+      # emitted corpus.
+      - name: Run the scaffolded analyzer's own gate
+        working-directory: /tmp/metaanalyzer
+        run: |
+          go mod tidy
+          task setup
+          task ci
+      - name: x/tools must survive tidy
+        working-directory: /tmp/metaanalyzer
+        run: |
+          set -e
+          if ! grep -q 'golang.org/x/tools' go.mod; then
+            echo "go mod tidy stripped x/tools: the emitted analyzer does not import it"
+            exit 1
+          fi
+      # The shipped fixture has no imports, so gci has nothing to reorder and a
+      # diff against it could never fail -- a vacuous check, which is the
+      # pattern ROADMAP §J exists to stop. Drop in a deliberately non-canonical
+      # probe instead: gci reorders it if and only if the testdata exclusion is
+      # missing. Verified in both directions before this shipped.
+      - name: task format must leave testdata untouched
+        working-directory: /tmp/metaanalyzer
+        run: |
+          set -e
+          probe=analyzer/metaanalyzer/testdata/src/a/probe.go
+          printf 'package a\n\nimport (\n\t"example.com/z"\n\t"fmt"\n)\n\nvar _ = fmt.Sprint(z.X)\n' > "$probe"
+          cp "$probe" /tmp/probe.before
+          task format
+          if ! diff -q /tmp/probe.before "$probe" >/dev/null; then
+            echo "task format rewrote a file under testdata"
+            diff /tmp/probe.before "$probe" || true
+            exit 1
+          fi
+          rm -f "$probe"
