@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.0](https://github.com/RomanAgaltsev/keel/compare/v2.7.0...v2.8.0) (2026-08-25)
+
+
+### Features
+
+* the go-analyzer and go-cli archetypes ([#67](https://github.com/RomanAgaltsev/keel/issues/67)) ([6385746](https://github.com/RomanAgaltsev/keel/commit/6385746c9f75169d1593ca4f2fb4e8d4fb05b5ed))
+
 ## [2.7.0](https://github.com/RomanAgaltsev/keel/compare/v2.6.0...v2.7.0) (2026-08-25)
 
 
