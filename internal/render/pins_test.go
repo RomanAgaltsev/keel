@@ -51,7 +51,7 @@ func TestWorkflowsDoNotPinToolVersions(t *testing.T) {
 
 func TestTaskfileAndLintAgreeOnGolangciVersion(t *testing.T) {
 	plan := recipePlan(t, "go-service")
-	require.Contains(t, plan.Files["Taskfile.yml"], "v2.12.2")
+	require.Contains(t, plan.Files["Taskfile.yml"], "v2.13.1")
 }
 
 // TestTemplatePinsMatchKeelsOwnWorkflows replaces a denylist with a comparison.

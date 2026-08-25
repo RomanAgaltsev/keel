@@ -49,7 +49,7 @@ func TestTaskfileGoPreservesTaskTemplating(t *testing.T) {
 }
 
 func TestTaskfileGoPinsMatchLintModule(t *testing.T) {
-	require.Contains(t, taskfileGo(t), "GOLANGCI_LINT_VERSION: \"v2.12.2\"")
+	require.Contains(t, taskfileGo(t), "GOLANGCI_LINT_VERSION: \"v2.13.1\"")
 	require.False(t, strings.Contains(taskfileGo(t), "v2.3.0"))
 }
 

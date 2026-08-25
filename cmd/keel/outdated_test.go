@@ -159,7 +159,8 @@ func TestOutdatedWithoutLockDoesNotClaimUpToDate(t *testing.T) {
 func TestOutdatedReportsDegradedCompositionCheck(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "recipe.yaml"), []byte(
-		"name: custom\nlanguage: go\nmodules: [base-layout, my-external]\n"), 0o600))
+		"name: custom\nlanguage: go\nmodules: [base-layout, my-external]\n",
+	), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".scaffold.lock"), []byte(`lock_version: 2
 keel_version: 2.4.0
 recipe: custom

@@ -14,12 +14,14 @@ func writeRecipe(t *testing.T, path string) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	require.NoError(t, os.WriteFile(path, []byte(
-		"name: my-recipe\nlanguage: go\nmodules: [base-layout, go-mod]\n"), 0o600))
+		"name: my-recipe\nlanguage: go\nmodules: [base-layout, go-mod]\n",
+	), 0o600))
 }
 
 func TestResolveUpdateRecipeBuiltin(t *testing.T) {
 	rec, _, fellBack, warn, err := resolveUpdateRecipe(
-		lock.Lock{Recipe: "go-service"}, t.TempDir(), "")
+		lock.Lock{Recipe: "go-service"}, t.TempDir(), "",
+	)
 	require.NoError(t, err)
 	require.False(t, fellBack)
 	require.Empty(t, warn)
@@ -32,7 +34,8 @@ func TestResolveUpdateRecipeFileRelativeToRepo(t *testing.T) {
 	writeRecipe(t, filepath.Join(repo, "recipes", "my-recipe.yaml"))
 
 	rec, _, fellBack, _, err := resolveUpdateRecipe(
-		lock.Lock{Recipe: "my-recipe", RecipeSource: "recipes/my-recipe.yaml"}, repo, "")
+		lock.Lock{Recipe: "my-recipe", RecipeSource: "recipes/my-recipe.yaml"}, repo, "",
+	)
 	require.NoError(t, err)
 	require.False(t, fellBack)
 	require.Equal(t, []string{"base-layout", "go-mod"}, rec.ModuleNames())
@@ -44,7 +47,8 @@ func TestResolveUpdateRecipeOverrideWins(t *testing.T) {
 	writeRecipe(t, other)
 
 	rec, _, fellBack, _, err := resolveUpdateRecipe(
-		lock.Lock{Recipe: "my-recipe", RecipeSource: "gone.yaml"}, repo, other)
+		lock.Lock{Recipe: "my-recipe", RecipeSource: "gone.yaml"}, repo, other,
+	)
 	require.NoError(t, err)
 	require.False(t, fellBack)
 	require.Equal(t, []string{"base-layout", "go-mod"}, rec.ModuleNames())
@@ -73,6 +77,7 @@ func TestResolveUpdateRecipeOverrideMissingIsAnError(t *testing.T) {
 	// An explicit --recipe that does not resolve is a typo, not a reason to
 	// silently update something else.
 	_, _, _, _, err := resolveUpdateRecipe(
-		lock.Lock{Recipe: "my-recipe"}, t.TempDir(), "no-such-file.yaml")
+		lock.Lock{Recipe: "my-recipe"}, t.TempDir(), "no-such-file.yaml",
+	)
 	require.Error(t, err)
 }

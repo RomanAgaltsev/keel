@@ -94,7 +94,7 @@ func TestTaskfileGoLibraryKeepsEveryOtherTask(t *testing.T) {
 		require.Contains(t, got, task)
 	}
 	// The tool pins live here regardless of archetype.
-	require.Contains(t, got, "GOLANGCI_LINT_VERSION: \"v2.12.2\"")
+	require.Contains(t, got, "GOLANGCI_LINT_VERSION: \"v2.13.1\"")
 }
 
 func TestReadmeLibraryHasNoBuildLine(t *testing.T) {
