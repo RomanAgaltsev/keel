@@ -47,9 +47,9 @@ tasks:
     deps: [formatters:install]
     cmds:
       - echo 'Formatting code with gofumpt...'
-      - bash -c "find . -type f -name '*.go' -exec {{.GOFUMPT}} -extra -w {} +"
+      - bash -c "find . -type f -name '*.go' -not -path '*/testdata/*' -exec {{.GOFUMPT}} -extra -w {} +"
       - echo 'Sorting imports with gci...'
-      - bash -c "find . -type f -name '*.go' -exec {{.GCI}} write -s standard -s default -s 'prefix(github.com/RomanAgaltsev/demo)' {} +"
+      - bash -c "find . -type f -name '*.go' -not -path '*/testdata/*' -exec {{.GCI}} write -s standard -s default -s 'prefix(github.com/RomanAgaltsev/demo)' {} +"
 
   lint:
     desc: run golangci-lint

@@ -1,0 +1,3 @@
+name: demo CodeQL config
+queries:
+  - uses: security-extended

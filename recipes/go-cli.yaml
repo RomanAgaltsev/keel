@@ -1,0 +1,21 @@
+name: go-cli
+language: go
+archetype: cli
+modules:
+  [
+    base-layout,
+    go-mod,
+    cli-go,
+    taskfile-go,
+    lint-go,
+    test-go,
+    security-go,
+    dep-bots-go,
+    release-go,
+    spell,
+    license,
+    governance,
+    contributing-go,
+    community-templates,
+    repo-settings-go,
+  ]
