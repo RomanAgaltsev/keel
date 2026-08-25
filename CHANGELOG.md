@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.0](https://github.com/RomanAgaltsev/keel/compare/v2.6.0...v2.7.0) (2026-08-25)
+
+
+### Features
+
+* module dependency contribution ([#65](https://github.com/RomanAgaltsev/keel/issues/65)) ([ef97062](https://github.com/RomanAgaltsev/keel/commit/ef97062e293eccea46078da13492528880aab67e))
+
 ## [2.6.0](https://github.com/RomanAgaltsev/keel/compare/v2.5.0...v2.6.0) (2026-08-25)
 
 
