@@ -1,6 +1,6 @@
 name: go-mod
 description: Go module with a cmd/<name> entrypoint (service, cli) or a root package (library)
-version: 2.1.0
+version: 2.2.0
 language: go
 requires: [base-layout]
 files: # dest is always "." — src carries the subdir

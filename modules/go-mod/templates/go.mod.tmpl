@@ -1,3 +1,10 @@
 module {{ .module_path }}
 
 go 1.26
+{{ if .go_deps }}
+require (
+{{- range .go_deps }}
+	{{ .Path }} {{ .Version }}
+{{- end }}
+)
+{{ end -}}
