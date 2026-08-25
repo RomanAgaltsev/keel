@@ -94,6 +94,19 @@ Each `files` entry maps templates into the rendered repo:
 | `src` | A glob relative to the module's `templates/` directory. |
 | `dest` | Destination directory in the rendered repo (`.` is the repo root). |
 | `when` | Optional `text/template` condition; the file is rendered only when it evaluates truthy. |
+| `user_owned` | The file's content becomes the user's once they edit it. |
+
+Mark a file `user_owned: true` when the user is expected to add to it after
+scaffolding. `go.mod` is the case that motivated it: their first `go get` adds
+a `require` line keel did not write, so an update that dropped a `.keel-new`
+sidecar containing keel's `require` block — without their dependencies — would
+be worse than doing nothing.
+
+The rule is deliberately narrow. While the file is **untouched** it updates
+like any other, so keel keeps the parts it owns current — `keel update
+--reconfigure` still rewrites `go.mod`'s module path. Once the user has
+**edited** it, keel skips it silently: no conflict and no sidecar. Either way
+it is never deleted if its module leaves the recipe.
 
 A file whose name ends in **`.tmpl`** is rendered as a Go `text/template` (the
 `.tmpl` suffix is stripped from the output name). Any other file is **copied

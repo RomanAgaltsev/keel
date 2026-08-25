@@ -15,65 +15,71 @@ import (
 	"github.com/RomanAgaltsev/keel/v2/internal/manifest"
 )
 
-// renderModule renders one module's files into a dest-path -> content map.
-func renderModule(m manifest.Manifest, tfs fs.FS, a answers.Answers) (map[string]string, error) {
+// renderModule renders one module's files into a dest-path -> content map, and
+// reports which of those dests came from a rule marked `user_owned`.
+func renderModule(m manifest.Manifest, tfs fs.FS, a answers.Answers) (map[string]string, map[string]bool, error) {
 	out := map[string]string{}
+	userOwned := map[string]bool{}
 	for _, rule := range m.Files {
 		ok, err := evalWhen(rule.When, a)
 		if err != nil {
-			return nil, fmt.Errorf("module %q: when %q: %w", m.Name, rule.When, err)
+			return nil, nil, fmt.Errorf("module %q: when %q: %w", m.Name, rule.When, err)
 		}
 		if !ok {
 			continue
 		}
 		matches, err := fs.Glob(tfs, rule.Src)
 		if err != nil {
-			return nil, fmt.Errorf("module %q: glob %q: %w", m.Name, rule.Src, err)
+			return nil, nil, fmt.Errorf("module %q: glob %q: %w", m.Name, rule.Src, err)
 		}
 		if len(matches) == 0 && !strings.ContainsAny(rule.Src, "*?[") {
-			return nil, fmt.Errorf("module %q: file %q not found in templates", m.Name, rule.Src)
+			return nil, nil, fmt.Errorf("module %q: file %q not found in templates", m.Name, rule.Src)
 		}
 		for _, src := range matches {
-			if err := renderFile(out, m, tfs, a, rule.Dest, src); err != nil {
-				return nil, err
+			dest, err := renderFile(out, m, tfs, a, rule.Dest, src)
+			if err != nil {
+				return nil, nil, err
+			}
+			if dest != "" && rule.UserOwned {
+				userOwned[dest] = true
 			}
 		}
 	}
-	return out, nil
+	return out, userOwned, nil
 }
 
-// renderFile renders a single source file into out under dest. Directories are
-// skipped.
-func renderFile(out map[string]string, m manifest.Manifest, tfs fs.FS, a answers.Answers, destDir, src string) error {
+// renderFile renders a single source file into out under dest, returning the
+// dest it wrote. Directories are skipped and return an empty dest.
+func renderFile(out map[string]string, m manifest.Manifest, tfs fs.FS, a answers.Answers, destDir, src string) (string, error) {
 	info, err := fs.Stat(tfs, src)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if info.IsDir() {
-		return nil
+		return "", nil
 	}
 	rel, err := renderString(strings.TrimSuffix(src, ".tmpl"), a)
 	if err != nil {
-		return fmt.Errorf("module %q: path %q: %w", m.Name, src, err)
+		return "", fmt.Errorf("module %q: path %q: %w", m.Name, src, err)
 	}
 	dest := path.Join(destDir, rel)
 	if err := safeDest(dest); err != nil {
-		return fmt.Errorf("module %q: %w", m.Name, err)
+		return "", fmt.Errorf("module %q: %w", m.Name, err)
 	}
 	raw, err := fs.ReadFile(tfs, src)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if strings.HasSuffix(src, ".tmpl") {
 		content, err := renderString(string(raw), a)
 		if err != nil {
-			return fmt.Errorf("module %q: render %q: %w", m.Name, src, err)
+			return "", fmt.Errorf("module %q: render %q: %w", m.Name, src, err)
 		}
 		out[dest] = content
 	} else {
 		out[dest] = string(raw) // verbatim — preserves ${{ }} and {{ }}
 	}
-	return nil
+	return dest, nil
 }
 
 func renderString(tmpl string, a answers.Answers) (string, error) {

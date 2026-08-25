@@ -182,3 +182,62 @@ func TestClassifyRetractsOrphanedModuleFiles(t *testing.T) {
 		Path: ".github/workflows/typos.yml", Class: update.Removed,
 	})
 }
+
+func TestClassifySkipsAnEditedUserOwnedFile(t *testing.T) {
+	// go.mod gains a require line the first time the user runs `go get`. Without
+	// the user-owned rule it classifies as Conflict, and the .keel-new sidecar
+	// would hold keel's requires WITHOUT the user's -- copying it over would
+	// delete their dependencies.
+	in := update.Input{
+		Candidates: map[string]bool{"go-mod": true},
+		Render:     map[string]string{"go.mod": "module demo\n\ngo 1.26\n"},
+		Owner:      map[string]string{"go.mod": "go-mod"},
+		UserOwned:  map[string]bool{"go.mod": true},
+		Original:   map[string]map[string]string{"go-mod": {"go.mod": "originalhash"}},
+		HashOf: func(string) (string, bool, error) {
+			return "the-user-edited-it", true, nil
+		},
+	}
+	p, err := update.Classify(in)
+	require.NoError(t, err)
+	require.Empty(t, p.Changes, "an edited user-owned file yields no change and no sidecar")
+}
+
+func TestClassifyStillUpdatesAnUntouchedUserOwnedFile(t *testing.T) {
+	// The narrow rule: while the user has not touched it, keel keeps
+	// actualizing what it owns -- this is what lets `update --reconfigure`
+	// rewrite go.mod's module path.
+	rendered := "module github.com/x/renamed\n\ngo 1.26\n"
+	in := update.Input{
+		Candidates: map[string]bool{"go-mod": true},
+		Render:     map[string]string{"go.mod": rendered},
+		Owner:      map[string]string{"go.mod": "go-mod"},
+		UserOwned:  map[string]bool{"go.mod": true},
+		Original:   map[string]map[string]string{"go-mod": {"go.mod": "untouched"}},
+		HashOf: func(string) (string, bool, error) {
+			return "untouched", true, nil // on disk == what keel recorded writing
+		},
+	}
+	p, err := update.Classify(in)
+	require.NoError(t, err)
+	require.Len(t, p.Changes, 1)
+	require.Equal(t, update.Clean, p.Changes[0].Class)
+	require.Equal(t, rendered, p.Changes[0].Content)
+}
+
+func TestClassifyDoesNotRetractAUserOwnedFile(t *testing.T) {
+	// Dropping go-mod from a recipe must not delete the repository's go.mod.
+	in := update.Input{
+		Orphaned:  map[string]bool{"go-mod": true},
+		Render:    map[string]string{},
+		Owner:     map[string]string{},
+		UserOwned: map[string]bool{"go.mod": true},
+		Original:  map[string]map[string]string{"go-mod": {"go.mod": "matching"}},
+		HashOf: func(string) (string, bool, error) {
+			return "matching", true, nil
+		},
+	}
+	p, err := update.Classify(in)
+	require.NoError(t, err)
+	require.Empty(t, p.Changes, "a user-owned file is never retracted")
+}

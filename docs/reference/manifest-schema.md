@@ -106,6 +106,22 @@ that action.
 | `src` | string (glob) | yes | Glob relative to the module's `templates/` dir. |
 | `dest` | string | yes | Destination directory in the rendered repo (`.` = root). |
 | `when` | string (`text/template`) | no | Condition; the file renders only when it evaluates truthy. |
+| `user_owned` | bool | no | The file's content becomes the user's once they edit it. |
+
+A `user_owned` file behaves in three ways:
+
+- **Untouched** — it updates normally (`Clean`), so keel keeps actualizing what
+  it owns. This is what lets `keel update --reconfigure` still rewrite
+  `go.mod`'s module path.
+- **Edited** — it is skipped silently. No `Conflict`, and crucially no
+  `.keel-new` sidecar, which would carry keel's render *without* the user's
+  additions and be dangerous to act on.
+- **Retracted** — never. If its module leaves the recipe, the file stays.
+
+It remains *recorded* in the lockfile, so its baseline is still available.
+
+`go.mod` is the motivating case: the first `go get` adds a `require` line keel
+did not write, but the `module` line stays keel's to actualize.
 
 Files ending in `.tmpl` are rendered as Go `text/template` (suffix stripped);
 all others are copied verbatim. Rendering uses `missingkey=error`.

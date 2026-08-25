@@ -28,7 +28,8 @@ type Plan struct {
 	// actually computed rather than re-deriving it.
 	Answers answers.Answers
 
-	owner map[string]string // dest -> module name, for collision messages
+	owner     map[string]string // dest -> module name, for collision messages
+	userOwned map[string]bool   // dest -> content becomes the user's once edited
 }
 
 // Owner returns a copy of the dest → module-name map, so callers can group a
@@ -37,6 +38,16 @@ func (p Plan) Owner() map[string]string {
 	out := make(map[string]string, len(p.owner))
 	for dest, mod := range p.owner {
 		out[dest] = mod
+	}
+	return out
+}
+
+// UserOwned returns a copy of the set of dests whose content becomes the user's
+// once they edit it. See manifest.FileRule.UserOwned.
+func (p Plan) UserOwned() map[string]bool {
+	out := make(map[string]bool, len(p.userOwned))
+	for dest, v := range p.userOwned {
+		out[dest] = v
 	}
 	return out
 }
@@ -54,12 +65,13 @@ func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
 	a["go_deps"] = unionDeps(mods)
 
 	p := Plan{
-		Files:   map[string]string{},
-		Answers: a,
-		owner:   map[string]string{},
+		Files:     map[string]string{},
+		Answers:   a,
+		owner:     map[string]string{},
+		userOwned: map[string]bool{},
 	}
 	for _, mf := range mods {
-		files, err := renderModule(mf.Manifest, mf.FS, a)
+		files, modUserOwned, err := renderModule(mf.Manifest, mf.FS, a)
 		if err != nil {
 			return Plan{}, err
 		}
@@ -74,6 +86,9 @@ func BuildPlan(mods []moduleFS, a answers.Answers) (Plan, error) {
 			}
 			p.owner[dest] = mf.Manifest.Name
 			p.Files[dest] = files[dest]
+			if modUserOwned[dest] {
+				p.userOwned[dest] = true
+			}
 		}
 	}
 	return p, nil

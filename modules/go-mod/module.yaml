@@ -6,6 +6,10 @@ requires: [base-layout]
 files: # dest is always "." — src carries the subdir
   - src: "go.mod.tmpl"
     dest: "."
+    # The user's first `go get` makes the content partly theirs. Until they edit
+    # it, update keeps it current (--reconfigure still rewrites the module path);
+    # after that it is skipped silently, and dep changes are reported instead.
+    user_owned: true
   - src: "cmd/{{.repo_name}}/main.go.tmpl"
     dest: "."
     when: '{{ not .is_library }}'

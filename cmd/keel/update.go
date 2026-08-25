@@ -115,6 +115,7 @@ func runUpdate(cmd *cobra.Command, f *updateFlags) error {
 		Owner:          plan.Owner(),
 		Original:       lockOriginals(lk),
 		HashOf:         diskHasher(f.path),
+		UserOwned:      plan.UserOwned(),
 	})
 	if err != nil {
 		return err

@@ -31,6 +31,18 @@ type FileRule struct {
 	Src  string `yaml:"src"`
 	Dest string `yaml:"dest"`
 	When string `yaml:"when,omitempty"`
+	// UserOwned marks a file whose content becomes the user's once they edit it.
+	// go.mod is the motivating case: their first `go get` adds a require line
+	// keel did not write.
+	//
+	// While such a file is untouched it updates normally, so keel keeps
+	// actualizing the parts it owns -- `keel update --reconfigure` still
+	// rewrites go.mod's module path. Once edited it is skipped silently: no
+	// .keel-new sidecar, because a sidecar holding keel's requires *without*
+	// the user's would be dangerous to act on. It is never retracted either,
+	// and stays recorded in the lock so a later append-merge can reconstruct a
+	// baseline.
+	UserOwned bool `yaml:"user_owned,omitempty"`
 }
 
 // Validate reports whether every contract this manifest declares is well formed.
