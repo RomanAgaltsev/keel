@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/RomanAgaltsev/keel/compare/v2.5.0...v2.6.0) (2026-08-25)
+
+
+### Features
+
+* **lint:** bump golangci-lint to v2.13.1 and gofumpt to v0.11.0 ([#63](https://github.com/RomanAgaltsev/keel/issues/63)) ([6919ac2](https://github.com/RomanAgaltsev/keel/commit/6919ac25b17f9d3510374cdb78ff50395200ecc1))
+
 ## [2.5.0](https://github.com/RomanAgaltsev/keel/compare/v2.4.2...v2.5.0) (2026-08-17)
 
 
