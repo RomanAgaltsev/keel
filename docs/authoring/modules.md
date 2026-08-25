@@ -44,6 +44,33 @@ files:
 | `requires` | Other modules this one depends on, so a recipe stays consistent (e.g. most modules `requires: [base-layout]`). |
 | `questions` | The module's own questions (see below). |
 | `files` | The render rules (see below). |
+| `deps` | Third-party Go modules your emitted code imports (see below). |
+
+## Dependencies
+
+If your module emits Go code that imports something outside the standard
+library, declare it. keel unions every module's `deps` across the recipe and the
+`go-mod` module renders the `require` block, so you never edit `go.mod`
+yourself — and two modules needing the same dependency don't collide.
+
+```yaml
+deps:
+  - path: golang.org/x/tools
+    version: v0.38.0
+```
+
+Three rules:
+
+- **Declare direct imports only.** The scaffolded repo runs `go mod tidy` as the
+  first step of its own `task ci`, which resolves the indirect closure and
+  writes `go.sum`.
+- **Versions are `v`-prefixed semver.** `v0.38.0`, not `0.38.0`. Put the version
+  in `version`, never as `path@version`.
+- **Go modules only.** Declaring `deps` on an `any` or `rust` module is an
+  error. Cargo support is unbuilt until a Rust module needs it.
+
+If two modules in a recipe declare the same path at different versions, the
+higher one wins — the same rule Go's own minimal version selection applies.
 
 ## Questions
 
