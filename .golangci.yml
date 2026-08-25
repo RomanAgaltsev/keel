@@ -147,7 +147,13 @@ formatters:
     - gci
   settings:
     gofumpt:
-      extra-rules: true
+      # gofumpt v0.11.0 split the old catch-all `extra-rules` into named rules and
+      # added `balance-calls`; `extra-rules: true` still means "all of them", but it
+      # is deprecated and silently widens whenever gofumpt adds a rule. Name them.
+      extra:
+        group-params: true
+        clothe-returns: true
+        balance-calls: true
     gci:
       sections:
         - standard

@@ -2,9 +2,9 @@ version: "3"
 
 vars:
   GO_VERSION: "1.26.4"
-  GOLANGCI_LINT_VERSION: "v2.12.2"
+  GOLANGCI_LINT_VERSION: "v2.13.1"
   GCI_VERSION: "v0.14.0"
-  GOFUMPT_VERSION: "v0.10.0"
+  GOFUMPT_VERSION: "v0.11.0"
 
   BIN_DIR: '{{.ROOT_DIR | replace "\\" "/"}}/bin'
   EXE_EXT: '{{if eq OS "windows"}}.exe{{end}}'

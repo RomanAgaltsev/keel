@@ -58,7 +58,8 @@ func resolveUpdateRecipe(lk lock.Lock, repoPath, override string) (recipe.Recipe
 		"warning: recipe %q not found; updating only the modules recorded in .scaffold.lock.\n"+
 			"         Modules added to the recipe since this repo was scaffolded cannot be detected.\n"+
 			"         Re-run with --recipe <path> to point at it.",
-		lk.RecipeSource)
+		lk.RecipeSource,
+	)
 	return recipeFromLock(lk), "", true, warning, nil
 }
 

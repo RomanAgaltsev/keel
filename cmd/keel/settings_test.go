@@ -38,10 +38,12 @@ func settingsRepo(t *testing.T, groups ...settings.Group) string {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".github"), 0o750))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, filepath.FromSlash(settings.DefaultPath)),
-		[]byte("version: 1\nrepository:\n  has_wiki: false\n"), 0o600))
+		[]byte("version: 1\nrepository:\n  has_wiki: false\n"), 0o600,
+	))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".scaffold.lock"), []byte(
 		"lock_version: 2\nkeel_version: 2.2.0\nrecipe: go-service\nmodules: []\nanswers:\n"+
-			"    repo_name: demo\n    module_path: github.com/acme/demo\n    provider: github\n"), 0o600))
+			"    repo_name: demo\n    module_path: github.com/acme/demo\n    provider: github\n",
+	), 0o600))
 
 	f := &provider.FakeApplier{Groups: groups}
 	orig := resolveProvider
@@ -143,7 +145,8 @@ func TestSettingsNoLockRequiresRepoFlag(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".github"), 0o750))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(dir, filepath.FromSlash(settings.DefaultPath)),
-		[]byte("version: 1\nrepository:\n  has_wiki: false\n"), 0o600))
+		[]byte("version: 1\nrepository:\n  has_wiki: false\n"), 0o600,
+	))
 
 	cmd := newSettingsCmd()
 	var buf bytes.Buffer

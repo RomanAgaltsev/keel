@@ -100,7 +100,8 @@ func TestLoadFileRejectsUnknownArchetype(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "bad.yaml")
 	require.NoError(t, os.WriteFile(p, []byte(
-		"name: bad\nlanguage: go\narchetype: daemon\nmodules: [base-layout]\n"), 0o600))
+		"name: bad\nlanguage: go\narchetype: daemon\nmodules: [base-layout]\n",
+	), 0o600))
 
 	_, err := LoadFile(p)
 	require.Error(t, err)
@@ -112,7 +113,8 @@ func TestLoadFileAcceptsLibrary(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "lib.yaml")
 	require.NoError(t, os.WriteFile(p, []byte(
-		"name: lib\nlanguage: go\narchetype: library\nmodules: [base-layout]\n"), 0o600))
+		"name: lib\nlanguage: go\narchetype: library\nmodules: [base-layout]\n",
+	), 0o600))
 
 	r, err := LoadFile(p)
 	require.NoError(t, err)
