@@ -27,6 +27,9 @@ func TestTaskfileGoHasTheFullTaskSet(t *testing.T) {
 	for _, task := range []string{
 		"setup:", "formatters:install:", "golangci-lint:install:", "format:",
 		"lint:", "vet:", "test:", "cover:", "deps:update:", "build:", "ci:",
+		// The -race gate needs cgo, so on a machine with no C toolchain the
+		// native tasks above cannot even build. These are the way out.
+		"test:docker:", "test:norace:", "toolchain:check:", "cover:docker:", "ci:docker:",
 	} {
 		require.Contains(t, got, task)
 	}
@@ -45,6 +48,10 @@ func TestTaskfileGoPreservesTaskTemplating(t *testing.T) {
 	require.Contains(t, got, "{{.BIN_DIR}}")
 	require.Contains(t, got, `{{if eq OS "windows"}}.exe{{end}}`)
 	require.Contains(t, got, `{{.ROOT_DIR | replace "\\" "/"}}`)
+	// The container tasks are one long var reference; if DOCKER_RUN arrives
+	// pre-expanded or mangled, every :docker task silently runs the wrong thing.
+	require.Contains(t, got, `-w /src {{.GO_IMAGE}}`)
+	require.Contains(t, got, `{{.DOCKER_RUN}} go test -race -shuffle=on ./...`)
 	require.NotContains(t, got, `{{"`) // no un-rendered escape hatches left behind
 }
 

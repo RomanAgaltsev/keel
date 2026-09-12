@@ -11,6 +11,18 @@ vars:
   GOLANGCI_LINT: "{{"{{.BIN_DIR}}"}}/golangci-lint{{"{{.EXE_EXT}}"}}"
   GCI: "{{"{{.BIN_DIR}}"}}/gci{{"{{.EXE_EXT}}"}}"
   GOFUMPT: "{{"{{.BIN_DIR}}"}}/gofumpt{{"{{.EXE_EXT}}"}}"
+
+  # The race detector needs cgo, and cgo needs a C toolchain -- which a Windows
+  # workstation usually has no gcc for, so `task test` cannot even build there.
+  # The :docker tasks run the identical gate in a Linux container, which is also
+  # the platform CI runs on. `task toolchain:check` says which you can use.
+  GO_IMAGE: "golang:{{"{{.GO_VERSION}}"}}"
+  DOCKER_RUN: >-
+    docker run --rm
+    -v "{{`{{.ROOT_DIR | replace "\\" "/"}}`}}:/src"
+    -v go-race-modcache:/go/pkg/mod
+    -v go-race-buildcache:/root/.cache/go-build
+    -w /src {{"{{.GO_IMAGE}}"}}
 {{ if not .is_library }}
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
@@ -75,14 +87,37 @@ tasks:
       - go vet ./...
 
   test:
-    desc: race + shuffled tests
+    desc: race + shuffled tests (needs a C toolchain -- see toolchain:check)
     cmds:
       - go test -race -shuffle=on ./...
+
+  test:docker:
+    desc: race + shuffled tests in a Linux container (no local C toolchain needed)
+    cmds:
+      - "{{"{{.DOCKER_RUN}}"}} go test -race -shuffle=on ./..."
+
+  test:norace:
+    desc: shuffled tests WITHOUT the race detector -- a partial gate
+    cmds:
+      - echo "WARNING -- running without -race. This does NOT satisfy the gate."
+      - go test -shuffle=on ./...
+
+  toolchain:check:
+    desc: report which of test / test:docker / test:norace can run here
+    silent: true
+    cmds:
+      - if command -v gcc >/dev/null 2>&1; then echo "C toolchain -- $(gcc --version | head -1)"; else echo "C toolchain -- none; 'task test' cannot build, use 'task test:docker'"; fi
+      - if docker version >/dev/null 2>&1; then echo "docker -- available"; else echo "docker -- none; only 'task test:norace' is left, and it does NOT satisfy the gate"; fi
 
   cover:
     desc: coverage profile
     cmds:
       - go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+  cover:docker:
+    desc: coverage profile, in a Linux container
+    cmds:
+      - "{{"{{.DOCKER_RUN}}"}} go test -race -covermode=atomic -coverprofile=coverage.out ./..."
 
   deps:update:
     desc: update deps
@@ -102,6 +137,14 @@ tasks:
       - task: vet
       - task: lint
       - task: test
+
+  ci:docker:
+    desc: the same gate with the race step in a container, for machines with no C toolchain
+    cmds:
+      - task: deps:update
+      - task: vet
+      - task: lint
+      - task: test:docker
 
   keel:outdated:
     desc: report modules and pinned tools this repo has drifted behind
